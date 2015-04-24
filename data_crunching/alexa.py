@@ -22,7 +22,7 @@ def get_data(domain):
 		return False
 
 def save_data(domain, data):
-	with copen('data/' + domain + '.txt', 'w', encoding='utf8') as f:
+	with copen('alexa_data/' + domain + '.txt', 'w', encoding='utf8') as f:
 		f.write(data)
 
 def precrawled_sites():
@@ -81,7 +81,7 @@ def analyze_stuff():
 	files = listdir("alexa_data")
 	
 	for fn in files:
-		with open('data/' + fn) as f:
+		with open('alexa_data/' + fn) as f:
 			f = f.read()
 			if 'click here to continue' in f:
 				please_click_here.append(fn)
@@ -108,7 +108,7 @@ def create_json():
 	one formatted nicely and one with no extra whitespace"""	
 	result = {}
 	for fn in listdir('alexa_data/'):
-		with open('data/' + fn) as f:
+		with open('alexa_data/' + fn) as f:
 			try:
 				jdoc = xmlparse(f.read())
 				result[fn.replace(".txt", "")] = jdoc
