@@ -52,7 +52,7 @@ def crawl():
 	"""Crawls the Alexa API for site data"""
 	#get some domain data from the ranking file
 	domains = get_ranked_domains()
-	precrawled = precrawled_sites()
+	precrawled = set(precrawled_sites())
 	#get data for each one
 	for n, domain in enumerate(domains):
 		if domain in precrawled:
