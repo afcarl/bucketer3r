@@ -1,0 +1,88 @@
+
+body {
+	padding-top: 55px;
+}
+
+.starter-template {
+	padding: 40px 15px;
+text-align: center;
+}
+
+.buckettable th {
+	background-color: lightblue;
+}
+
+.sitelist {
+	float: left;
+	width: 90%;
+}
+
+.controlgroup {
+	float: left;
+	width: 10%;
+	text-align: center;
+}
+
+.controlbutton {
+	margin-top: 5px;
+	vertical-align: middle;
+}
+
+.sitebtn {
+	margin: 2px;
+}
+
+.rowtitle {
+	margin-top: 20px;
+	margin-bottom: 20px;
+}
+
+.ddbox {
+	background-color: white;
+	height: 150px;
+	width: 100%;
+	border: 1px solid #CCCCCC;
+	border-radius: 5px;
+	padding: 5px;
+	overflow: scroll;
+}
+
+.alexarelated td {
+	font-size: smaller;
+}
+
+.alexarelated th {
+	background-color: lightblue;
+}
+
+.navtable {
+	border-radius: 5px;
+	text-align:center;
+	margin: 0 auto;
+	width: 90%;
+	margin-top: 20px;
+	margin-bottom: 15px;
+}
+
+.navtable td:hover {
+	background-color: lightgrey;
+}
+
+.adgroupmetrics th {
+	text-align: right;
+}
+
+.adgroupname {
+	float:left;
+}
+
+.adgroupname input {
+	width: 75%;
+}
+
+.adgroupsite {
+	padding-top: 1px;
+	padding-bottom: 1px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+}
