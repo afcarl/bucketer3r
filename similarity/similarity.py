@@ -180,35 +180,40 @@ def generate_html_files():
 	"""Creates files from the meta description, title, keywords. In future maybe page content too."""
 	
 	c = create_connection()
-	
 	files = set(listdir(html_directory))
-	for n, domain in enumerate(get_ranking()):
-		if (domain + ".html") in files:
-			try:
-				info = parse_html_file(domain)
-				#now update database record
-				entry = c['domains'].find_one({'domain':domain.replace(".", "#")}, {'_id':1})
-				if entry:
-					c['domains'].update(
-						{
-							'_id': entry['_id']
-						},
-						{
-						'$set': {
+	ranking = get_ranking()
+	already_scanned = set([x['domain'].replace('#', '.') for x in c['domains'].find({'html':{'$exists':True}}, {'domain':1})])
+	
+	for n, domain in enumerate(ranking):
+		if domain in already_scanned:
+			#print "{0} {1} already processed".format(n, domain)
+			continue
+		else:
+			if (domain + ".html") in files:
+				try:
+					info = parse_html_file(domain)
+					#now update database record
+					entry = c['domains'].find_one({'domain':domain.replace(".", "#")}, {'_id':1})
+					if entry:
+						c['domains'].update(
+							{
+								'_id': entry['_id']
+							},
+							{
+							'$set': {
+								'html': info
+							}
+						})
+					else:
+						c['domains'].insert({
+							'domain': domain.replace(".", "#"),
 							'html': info
-						}
-					})
-				else:
-					c['domains'].insert({
-						'domain': domain.replace(".", "#"),
-						'html': info
-					})
-			
-			except Exception, e:
-				print Exception, e
-			
-			print n, domain, len(info)
-			
+						})
+					
+					print n, domain, len(info)
+				
+				except Exception, e:
+					print Exception, e
 
 #Testing and analysis
 
@@ -232,6 +237,17 @@ def popular_words():
 	
 	for x in a[:200]:
 		print x[0]
+
+#Record creation
+
+def cache_similar_sites_by_html():
+	"""Searches every domain for similar sites by its meta_description. Saves the top 10 to mongodb"""
+	
+	c = create_connection()
+	
+	for site in c['domains'].find({'html':{'$exists':True}}, {'html':1}):
+		domain = site['domain'].replace('#', '.')
+		similar = find_by_html(domain)
 
 #Domain search functionality
 
@@ -290,7 +306,7 @@ def find_by_site_description(starter_site, index):
 def find_by_similar_sites(starter_site):
 	"""Searches similarsites crawled data"""
 
-def find_by_html(starter_site):
+def find_by_html(starter_site, verbose=False):
 	"""Searches and ranks by page HTML attributes"""
 	
 	c = create_connection()
@@ -304,9 +320,8 @@ def find_by_html(starter_site):
 	print starter_desc
 	starter_vector = Counter(starter_desc) #vectorize it
 	
-	scanned = 0
-	for entry in c['domains'].find({'html.meta_description':{'$exists':True}}, {'html.meta_description':1, 'domain':1}):
-		scanned += 1
+	
+	for n, entry in enumerate(c['domains'].find({'html.meta_description':{'$exists':True}}, {'html.meta_description':1, 'domain':1})):
 		domain = entry['domain']
 		desc = entry['html']['meta_description']
 		
@@ -320,17 +335,18 @@ def find_by_html(starter_site):
 						results = results[:50]
 						break
 	
-	print scanned
+	if verbose: print "Scanned {0} domains".format(n)
 
 	for x in range(len(results)):
 		if results[x][1] == 0:
 			results = results[:x] #cut off blank tail of results if present
 			break
 
-	for x in results[:10]:
-		print x
-	
-	#return results
+	if verbose:
+		for x in results[:10]:
+			print x[0].replace('#', '.'), "\t\t\t", round(x[1], 3), "\t\t", x[2][:100] + "..."
+	else:
+		return results
 
 
 
