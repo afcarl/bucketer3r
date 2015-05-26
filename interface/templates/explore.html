@@ -1,0 +1,78 @@
+{% extends "main_template.html" %}
+{% block content %}
+
+<div class='row' style='margin-top:20px;'>
+	<div class='col-md-6'>
+		<form name="domain_form" action='/explore' method='GET'>
+			<input type='text' class='form-control' value="{{data.domain_name}}" name='domain' style='font-size:x-large;font-weight:bold;height:50px;'>
+		</form>
+	</div>
+</div>
+<div class='row' style='margin-top: 15px;'>
+	<div class='col-md-4'>
+		<h4>SimilarSites Related Sites</h4>
+		<table class='table table-bordered table-hover alexarelated'>
+			<tr>
+				<th>URL</th><th>Title</th>
+			</tr>
+			{% if data.ss_related_sites %}
+			{% for site in data.ss_related_sites %}
+			<tr>
+				<td><a href="/explore?domain={{site.url}}">{{site.url}}</a><td>{{site.title}}</td></td>
+			</tr>
+			{% endfor %}
+			{% else %}
+			<tr>
+				<td colspan='2'>No data</td>
+			</tr>
+			{% endif %}
+		</table>
+	</div>
+	<div class='col-md-4'>
+		<h4>HTML Meta Related Sites</h4>
+		<table class='table table-bordered table-hover alexarelated'>
+			<tr>
+				<th>URL</th><th>Title</th>
+			</tr>
+			{% if data.meta_related_sites %}
+			{% for site in data.meta_related_sites %}
+			<tr>
+				<td><a href="/explore?domain={{site.url}}">{{site.url}}</a><td>{{site.title}}</td></td>
+			</tr>
+			{% endfor %}
+			{% else %}
+			<tr>
+				<td colspan='2'>No data</td>
+			</tr>
+			{% endif %}
+		</table>
+	</div>
+	<div class='col-md-4'>
+		<h4>Alexa Related Sites</h4>
+		<table class='table table-bordered table-hover alexarelated'>
+			<tr>
+				<th>Name</th><th>URL</th>
+			</tr>
+			{% if data.alexa_related_sites %}
+			{% for site in data.alexa_related_sites %}
+			<tr>
+				<td>{{site.name}}</td><td><a href="/explore?domain={{site.url}}">{{site.url}}</a></td>
+			</tr>
+			{% endfor %}
+			{% else %}
+			<tr>
+				<td colspan='2'>No data</td>
+			</tr>
+			{% endif %}
+		</table>
+	</div>
+</div>
+<script>
+	//set the cursor to the end of the input
+	box = document.getElementsByName('domain')[0]
+	box.focus()
+	box.selectionStart = box.value.length
+	
+</script>
+
+{% endblock %}

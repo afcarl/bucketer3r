@@ -303,50 +303,96 @@ def find_by_site_description(starter_site, index):
 
 	return results
 
-def find_by_similar_sites(starter_site):
+def find_by_similarsites(starter_site):
 	"""Searches similarsites crawled data"""
-
-def find_by_html(starter_site, verbose=False):
-	"""Searches and ranks by page HTML attributes"""
 	
 	c = create_connection()
-	results = [["", 0, ""] for x in range(50)] #ranking
+	
+	entry = c['domains'].find_one({'domain':starter_site.replace('.', "#"), 'similar.similarsites':{'$exists':True}}, {'similar.similarsites':1})
+	if entry:
+		return entry['similar']['similarsites']
+	else:
+		return []
+	
+
+def find_by_html(connection, starter_site, check_cache=True):
+	"""Searches and ranks by the page's meta description in the HTML
+	connection	  :  a mongodb connection
+	starter_site  :  some domain name
+	verbose		  :  whether you want the results printed to the terminal
+	check_cache	  :  set to false if you want to always pull new data
+	"""
 	
 	#get the description of the starter site
 	domain = starter_site.replace('.', '#')
-	entry = c['domains'].find_one({'html.meta_description':{'$exists':True}, 'domain':domain}, {'html.meta_description':1, 'domain':1})
+	
+	entry = connection['domains'].find_one(
+		{
+			'html.meta_description': {'$exists':True},
+			'domain': domain
+		},
+		{
+			'html.meta_description': 1,
+			'similar.meta_description': 1,
+			'domain': 1
+		})
+	
+	#check if there's anything in the cache
+	results = []
+	if check_cache:
+		try:
+			if entry:
+				results = entry['similar']['meta_description']
+				if results:
+					for x in range(len(results)):
+						desc = connection['domains'].find_one({"domain":results[x]['domain'].replace('.',"#")}, {"html.meta_description":1})
+						desc = desc['html']['meta_description']
+						results[x]['desc'] = desc
+					
+					return results
+		except KeyError:
+			pass
+	
+	#pull some data
+	results = [{"url": "", "score": 0, "desc": ""} for x in range(50)] #ranking
+	
+	#get starter site's description to compare things to
 	starter_desc = entry['html']['meta_description']
 	starter_desc = tokenize_clean(starter_desc) #clean it and tokenize it
-	print starter_desc
 	starter_vector = Counter(starter_desc) #vectorize it
 	
-	
-	for n, entry in enumerate(c['domains'].find({'html.meta_description':{'$exists':True}}, {'html.meta_description':1, 'domain':1})):
-		domain = entry['domain']
-		desc = entry['html']['meta_description']
+	#scan all other domains
+	for n, record in enumerate(connection['domains'].find({'html.meta_description':{'$exists':True}}, {'html.meta_description':1, 'domain':1})):
+		domain = record['domain'].replace("#", ".")
 		
-		kw_vector = Counter(tokenize_clean(desc)) #vectorize desc
-		cosim = opt_cosine_similarity(starter_vector, kw_vector)
-		if cosim:
-			if cosim > results[-1][1]:
-				for x in range(len(results)):
-					if cosim > results[x][1]:
-						results = results[:x] + [[domain, cosim, desc]] + results[x:]
-						results = results[:50]
-						break
+		if domain != starter_site:
+			
+			desc = record['html']['meta_description']
+			kw_vector = Counter(tokenize_clean(desc)) #vectorize desc
+			cosim = opt_cosine_similarity(starter_vector, kw_vector)
+			
+			if cosim:
+				if cosim > results[-1]["score"]:
+					for x in range(len(results)):
+						if cosim > results[x]["score"]:
+							results = results[:x] + [{"domain":domain, "score":cosim, "desc": desc}] + results[x:]
+							results = results[:50]
+							break
 	
-	if verbose: print "Scanned {0} domains".format(n)
-
 	for x in range(len(results)):
-		if results[x][1] == 0:
+		if results[x]["score"] == 0:
 			results = results[:x] #cut off blank tail of results if present
 			break
-
-	if verbose:
-		for x in results[:10]:
-			print x[0].replace('#', '.'), "\t\t\t", round(x[1], 3), "\t\t", x[2][:100] + "..."
-	else:
-		return results
+	
+	#save to cache
+	connection['domains'].update({'_id': entry['_id']},
+		{
+			'$set': { #have to remove the description, don't want to save it twice
+				'similar.meta_description': [{'domain':x['domain'],'score':x['score']} for x in results]
+			}
+		})
+	
+	return results
 
 
 

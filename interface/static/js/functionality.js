@@ -168,25 +168,55 @@ function expandcat(row_id) {
 		site_list.className = "sitelist"
 		site_list.id = 'site_list_' + row_id
 		
-		control_group = document.createElement("div")
-		control_group.className = 'controlgroup'
-		delete_button = document.createElement('button')
-		delete_button.className = 'btn btn-primary controlbutton'
-		delete_button.appendChild(document.createTextNode("Delete"))
-		edit_button = document.createElement("button")
-		edit_button.className = 'btn btn-primary controlbutton'
-		url = '/new_adgroup?name=' + row_id.replace('row_', '')
+		adgroup_name = row_id.replace('row_', '')
 		
-		edit_button.addEventListener(
-			"click",
-			redirect(url)
-		)
+		dropdown = document.createElement('div')
+		dropdown.className = "dropdown controlgroup"
 		
-		edit_button.appendChild(document.createTextNode("Edit"))
-		control_group.appendChild(edit_button)
-		control_group.appendChild(delete_button)
+		button = document.createElement('button')
+		button.className = "btn btn-default dropdown-toggle"
+		button.type = "button"
+		button.id = "dropdownMenu_" + adgroup_name.replace(" ", "_")
+		button.setAttribute('data-toggle', "dropdown")
+		button.setAttribute('aria-expanded', 'true')
+		button.appendChild(document.createTextNode('Select Action '))
+		caret = document.createElement('span')
+		caret.className = 'caret'
+		button.appendChild(caret)
 		
-		new_td.appendChild(control_group)
+		ul = document.createElement('ul')
+		ul.className = 'dropdown-menu'
+		ul.setAttribute('role', 'menu')
+		ul.setAttribute("aria-labelledby", 'dropdownMenu_' + adgroup_name.replace(" ", "_"))
+		
+		buttons = [
+			["Edit", '/new_adgroup?name=' + adgroup_name],
+			["Delete", delete_adgroup(adgroup_name)],
+			["Import", '/import?name=' + adgroup_name],
+			["Export", '/export?name=' + adgroup_name]
+		]
+		
+		buttons.forEach(function(datum){
+			li = document.createElement('li')
+			li.setAttribute('role', 'presentation')
+			a = document.createElement('a')
+			a.setAttribute('role', 'menuitem')
+			a.setAttribute('tabindex', '-1')
+			a.href = "#"
+			a.appendChild(document.createTextNode(datum[0]))
+			if (typeof(datum[1]) === "string") {
+				a.addEventListener('click', redirect(datum[1]))
+			}else{
+				a.addEventListener('click', datum[1])
+			}
+			li.appendChild(a)
+			ul.appendChild(li)
+		})
+		
+		dropdown.appendChild(button)
+		dropdown.appendChild(ul)
+		
+		new_td.appendChild(dropdown)
 		new_td.appendChild(site_list)
 		
 		new_row.id = 'info_' + row_id
@@ -199,9 +229,37 @@ function expandcat(row_id) {
 		insertAfter(new_row, row)
 		
 		//get row data and insert the list of domains
-		get_adgroup_data(row_id.replace('row_', ''))
+		get_adgroup_data(adgroup_name)
 	}
 	
+}
+
+function delete_adgroup(adgroup_name) {
+	//Deletes an adgroup
+	
+	return function(){
+		if (confirm("Are you sure you would like to delete " + adgroup_name + "?")) {
+			if (confirm("Really, really sure? This can't be un-done")) {
+				var xmlhttp;
+				xmlhttp=new XMLHttpRequest()
+				xmlhttp.onreadystatechange=function(){
+					if (xmlhttp.readyState==4 && xmlhttp.status==200){
+						resp = xmlhttp.responseText
+						resp = JSON.parse(resp) //parse the json
+						if (resp.answer === 'success') {
+							alert("Successfully deleted adgroup: " + adgroup_name)
+						}
+						//now remove that row in the page
+						if (location.href.indexOf('/view_adgroups')!=-1) {
+							
+						}
+					}
+				}
+				xmlhttp.open("GET","/delete_adgroup?name=" + adgroup_name);
+				xmlhttp.send();	
+			}
+		}
+	}
 }
 
 function redirect(url){
@@ -235,11 +293,64 @@ function get_adgroup_data(adgroup_name){
 	xmlhttp.send();	
 }
 
-function remove_site(domain, nodeid){
+function add_site(domain, node_to_remove=false){
+	//Adds a site to the adgroup - on both the frontend and backend
+	//Also removes the site from whatever table/list it was added
+	
+	if (node_to_remove) {
+		node_to_remove.parentNode.removeChild(node_to_remove)
+	}
+	
+	recalculate_metrics() //recalculate metrics in the box 
+	
+	adgroup_name = location.href.split("name=")[1].split("&")[0]
+	
+	//send ajax request to add the site
+	var xmlhttp;
+	xmlhttp=new XMLHttpRequest()
+	xmlhttp.onreadystatechange=function(){
+		if (xmlhttp.readyState==4 && xmlhttp.status==200){
+			resp = JSON.parse(xmlhttp.responseText)
+			if (resp['answer'] == 'success') {
+				console.log("Added " + domain)
+			}else{
+				console.log("Error adding " + domain)
+			}
+		}
+	}
+	xmlhttp.open("GET","/add_adgroupsite?adgroup_name=" + adgroup_name + "&domain=" + domain);
+	xmlhttp.send();	
+}
+
+function recalculate_metrics(){
+	//Recalculates all the metrics in the box at the top right
+	
+	var xmlhttp;
+	xmlhttp=new XMLHttpRequest()
+	xmlhttp.onreadystatechange=function(){
+		if (xmlhttp.readyState==4 && xmlhttp.status==200){
+			var resp = JSON.parse(xmlhttp.responseText)
+			var metrics = Object.keys(resp)
+			for (var x in metrics) {
+				if (metrics[x].substring(0,7)==="metric_") {
+					document.getElementById(metrics[x]).innerHTML = resp[metrics[x]]
+				}
+			}
+		}
+	}
+	xmlhttp.open("GET","/get_metrics?adgroup_name=" + adgroup_name);
+	xmlhttp.send();	
+	
+}
+
+function remove_site(domain){
 	//Removes a site from the box on the new_adgroup page
 	//remove the box
-	box = document.getElementById('adgroupsite_' + nodeid)
+	box = document.getElementById('adgroupsite_' + domain.replace(/\./g, "_"))
 	box.parentNode.removeChild(box)
+	
+	recalculate_metrics() //recalculate metrics in the box 
+	
 	adgroup_name = location.href.split("name=")[1].split("&")[0]
 	
 	//send ajax request to remove the site
@@ -250,9 +361,242 @@ function remove_site(domain, nodeid){
 			resp = JSON.parse(xmlhttp.responseText)
 			if (resp['answer'] == 'success') {
 				console.log("Removed " + domain)
+			}else{
+				console.log("Error in removing " + domain)
 			}
 		}
 	}
 	xmlhttp.open("GET","/remove_adgroupsite?adgroup_name=" + adgroup_name + "&domain=" + domain);
-	xmlhttp.send();	
+	xmlhttp.send();
+}
+
+function switch_suggest(tab){
+	//switches the box underneath the suggest tab
+	
+	divs = document.querySelectorAll(".domain_suggest")
+	for (var x in divs){
+		var div = document.getElementById(divs[x].id)
+		if (div != undefined) {
+			if (divs[x].id != tab) {
+				div.style.display = 'none'
+				document.getElementById(divs[x].id+'_tab').className = ''
+			}else{
+				div.style.display = 'block'
+				document.getElementById(tab+'_tab').className = 'active'
+				document.getElementById(tab+'_starter').focus()
+			}
+		}
+	}
+	
+}
+
+function search_html_meta_description(){
+	//Searches for similar domains by HTML meta description
+	
+	domain = document.getElementById("html_meta_description_starter").value
+	
+	//create the spinner row
+	tbody = document.getElementById('html_meta_description_table').children[1]
+	tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;'><img src='/static/img/spinner.gif'></td></tr>"
+	
+	var xmlhttp;
+	xmlhttp=new XMLHttpRequest()
+	xmlhttp.onreadystatechange=function(){
+		if (xmlhttp.readyState==4 && xmlhttp.status==200){
+			resp = xmlhttp.responseText
+			resp = JSON.parse(resp) //parse the json
+			
+			//remove the spinner row
+			tbody.innerHTML = ""
+			
+			//enter the data
+			for (var x in resp) {
+				//get info from response
+				url = resp[x].domain
+				desc = resp[x].desc
+				rank = resp[x].alexa_rank
+				score = resp[x].score.toFixed(4)
+				
+				//shorten the description
+				if (desc.length > 300) {
+					desc = desc.substring(0, 300) + "..."
+				}
+				
+				button = "<button class='btn adgroupsite' onclick='add_site'><span class='glyphicon glyphicon-plus' aria-hidden='true'></span> <span>"+url+"</span></button>"
+				button.replace('add_site', 'add_site("' + url + '")')
+				
+				//construct the row
+				data = "<tr>"
+				data += "<td>" + button + "</td>"
+				data += "<td>" + score + "</td>"
+				data += "<td>" + rank + "</td>"
+				data += "<td><span style='font-size:small;'>" + desc + "</span></td>"
+				data += "</tr>"
+				
+				//append it to the data
+				tbody.innerHTML += data
+				
+				//focus again on the enter box
+				document.getElementById("html_meta_description_starter").focus()
+			}
+		}
+	}
+	xmlhttp.open("GET","/search_html_meta_description?domain=" + domain);
+	xmlhttp.send();
+}
+
+function search_similarsites(){
+	//Searches similarsites.com data
+	
+	domain = document.getElementById("similarsites_starter").value
+	
+	//create the spinner row
+	tbody = document.getElementById('similarsites_table').children[1]
+	tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'><img src='/static/img/spinner.gif'></td></tr>"
+	
+	var xmlhttp;
+	xmlhttp=new XMLHttpRequest()
+	xmlhttp.onreadystatechange=function(){
+		if (xmlhttp.readyState==4 && xmlhttp.status==200){
+			resp = xmlhttp.responseText
+			resp = JSON.parse(resp) //parse the json
+			tbody.innerHTML = "" //remove the spinner row
+			for (var x in resp) { //enter the data
+				//get info from response
+				url = resp[x].url
+				score = resp[x].score
+				title = resp[x].title
+				
+				//shorten the title
+				if (title.length > 300) {
+					title = title.substring(0, 300) + "..."
+				}
+				
+				button = "<button class='btn adgroupsite' onclick='add_site'><span class='glyphicon glyphicon-plus' aria-hidden='true'></span> "
+				button += "<span>"+url+"</span></button>"
+				button = button.replace('add_site', 'add_site("' + url + '", this.parentNode.parentNode)')
+				
+				console.log(button)
+				
+				//construct the row
+				data = "<tr>"
+				data += "<td>" + button + "</td>"
+				data += "<td>" + score + "</td>"
+				data += "<td>" + title + "</td>"
+				data += "</tr>"
+				
+				//append it to the data
+				tbody.innerHTML += data
+				
+				//focus again on the enter box
+				document.getElementById("similarsites_starter").focus()
+			}
+		}
+	}
+	xmlhttp.open("GET","/search_similarsites?domain=" + domain);
+	xmlhttp.send();
+}
+
+function enterkey(box_id) {
+	//Closure work around to capture the enter key
+	return function(e) {
+		if (e.keyCode == 13) {
+			window["search_" + box_id.replace("_starter", "")]()
+		}
+	}
+}
+
+function assign_enter_capture() {
+	//Assigns an event to each input box, when the enter key is pressed
+	var inputs = document.querySelectorAll(".domain_suggest") //find all the input boxes 
+	for (var x in inputs){
+		var box_id = inputs[x].id + "_starter"
+		var box = document.getElementById(box_id) //now we have the correct input box
+		if (box != undefined) { //(some weird glitch)
+			box.addEventListener("keypress", enterkey(box_id))
+		}
+	}
+}
+
+function save_imported_data(){
+	//Saves imported data
+	
+	//add to POST form
+	//clear the boxes and hide the area
+	//submit iframe
+	//display success message
+	
+}
+
+function process_import(){
+	//Handles data importing (apart from the final submit)
+	
+	//what data
+	raw_data = document.getElementById("importtext").value
+	
+	//is it valid
+	data = clean_import_data(raw_data)
+	if (data === false) {
+		alert("There's something wrong with the data you tried to import")
+	}
+	
+	//which adgroup
+	adgroup = document.getElementById("which_adgroup").value
+	if (value.indexOf("Select an")!=-1) {
+		alert("Please select an adgroup to import into.\n\nIf you'd like to create a new adgroup altogether, please use the 'New Adgroup' link above first. ")
+		return false
+	}
+	
+	//shrink the text import field in half
+	text_import_div = document.getElementById("text_import_div")
+	text_import_div.className = 'col-md-6'
+	
+	//create a second div to the right
+	var conf_div = document.createElement('div')
+	conf_div.className = 'col-md-6'
+	conf_div.id = "conf_div"
+	insertAfter(conf_div, text_import_div)
+	
+	//create a button
+	var submit_button = document.createElement("button")
+	submit_button.className = "btn btn-primary"
+	submit_button.innerHTML = "Looks good, save these to " + adgroup
+	submit_button.addEventListener("click", function(){
+		return function(){
+			//set form data
+			var field = document.getElementById("domain_data")
+			var container = document.getElementById("sitelist")
+			
+			data = {
+				'adgroup': adgroup,
+				'sites': []
+			}
+			
+			for (var x in container.children) {
+				site = container.children[x].innerHTML
+				data.sites.push(site)
+			}
+			
+			field.value = JSON.stringify(data)
+			
+			//submit it
+			var form = document.getElementById("data_transfer")
+			form.submit()
+		}
+	})
+	
+	//create a list of domains
+	
+	
+	
+}
+
+function clean_import_data(data){
+	//Cleans up import data
+	
+	//replace commas and tab characters with spaces
+	//tokenize into domains
+	//check that each domain looks like a domain (at least a dot, strip http/s)
+	//return as a list
+	
 }

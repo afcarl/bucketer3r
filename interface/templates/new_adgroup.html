@@ -1,0 +1,206 @@
+{% extends "main_template.html" %}
+{% block content %}
+	
+	<!--<span></span><span class="badge">14</span>-->
+	
+	<style>
+		/* http://simurai.com/blog/2011/07/26/webkit-scrollbar/ */
+		::-webkit-scrollbar {
+			-webkit-appearance: none;
+			width: 7px;
+		}
+		
+		::-webkit-scrollbar-thumb {
+			border-radius: 4px;
+			background-color: rgba(0,0,0,.5);
+			-webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+		}
+	</style>
+	
+	<div class='row' style='margin-top: 20px;'>
+		<div class='col-md-12'>
+			<ul class="nav nav-tabs">
+				<li id='add_domains_tab' role="presentation" class="active"><a href="/new_adgroup?name={{data.adgroup_name}}">Add Domains to Adgroup</a></li>
+				<li id='analyze_domains_tab' role="presentation"><a href="/analyze_adgroup?name={{data.adgroup_name}}">Analyze Domains in Adgroup</a></li>
+			</ul>
+		</div>
+	</div>
+	
+	<div class='row' style='margin-top: 20px;'>
+		<div class='col-md-6 adgroupname'>
+			<div class='input-group'>
+				<input type='text' name='name' id='adgroup_name' class='form-control' placeholder='Adgroup name'{% if data.page=='edit' %} value='{{data.name}}'{% endif %}>
+				<div class='input-group-btn'>
+					<button class='btn btn-primary' onclick="handle_edit()" id='create_edit'>{% if data.page == 'new' %}Create{% else %}Save{% endif %}</button>
+				</div>
+			</div>
+		</div>
+		<div class='col-md-6'>
+			<table class='table table-bordered adgroupmetrics'>
+				<tr>
+					<td colspan="4" style="">Adgroup Stats</td>
+				</tr>
+				<tr>
+					<th>Total Domains</th><td><span id='metric_total_domains'>{{data.metric_total_domains}}</span></td>
+					<th>Max P</th><td><span id='metric_max_p'>{{data.metric_max_p}}</span></td>
+				</tr>
+				<tr>
+					<th>Expected Daily Traffic</th><td><span id='metric_expected_daily_traffic'>{{data.metric_expected_daily_traffic}}</span></td>
+					<th>Expected Daily Clickthrough</th><td><span id='metric_expected_daily_clickthrough'>{{data.metric_expected_daily_clickthrough}}</span></td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div class='row'>
+		<div class='col-md-12'>
+			<div class='ddbox'>
+			{% for site in data.sites %}
+				<button class='btn adgroupsite' onclick="remove_site('{{site}}')" id='adgroupsite_{{site|replace('.', '_')}}'>
+					<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> <span>{{site}}</span>
+				</button>
+			{% endfor %}
+			</div>
+		</div>
+	</div>
+	
+	<div class='row suggesttabs'>
+		<div class='col-md-12'>
+			<ul class="nav nav-tabs">
+				<li id='domain_name_tab' role="presentation" class="active"><a href="javascript:switch_suggest('domain_name')">Domain Name</a></li>
+				<li id='dmoz_description_tab' role="presentation"><a href="javascript:switch_suggest('dmoz_description')">DMOZ Description</a></li>
+				<li id='html_meta_description_tab' role="presentation"><a href="javascript:switch_suggest('html_meta_description')">HTML Meta Description</a></li>
+				<li id='dmoz_categories_tab' role="presentation"><a href="javascript:switch_suggest('dmoz_categories')">DMOZ Categories</a></li>
+				<li id='similarsites_tab' role="presentation"><a href="javascript:switch_suggest('similarsites')">SimilarSites</a></li>
+				<li id='comscore_tab' role="presentation"><a href="javascript:switch_suggest('comscore')">ComScore</a></li>
+			</ul>
+		</div>
+	</div>
+	
+	<div class='row domain_suggest' id='domain_name'>
+		<div class='col-md-5'>
+			<h4 class='rowtitle'>Initial thought starters:</h4>
+			<input type='text' name='name' id='domain_name_starter' onkeyup='filter_domains()' class='form-control' placeholder='Domain or category'>
+			<h4 class='rowtitle'>Top categories for selected domains</h4>
+			<table class='table table-hover'>
+			</table>
+		</div>
+		<div class='col-md-7' style='padding-left: 25px; border-left: 1px solid #CCCCCC;'>
+			<h4 class='rowtitle'>Top suggested domains:</h4>
+			<table class='table table-hover'>
+				<thead>
+					<tr>
+						<th>Domain</th><th>Rank</th><th>Est. Daily Traffic</th>
+					</tr>	
+				</thead>
+				<tbody id='suggested_domains'>
+					<tr>
+						<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	
+	<div class='row domain_suggest' id='dmoz_description' style='display:none;'>
+		<div class='col-md-10'>
+			<h4 class='rowtitle'>DMOZ Description</h4>
+			<div class='input-group' style='width:50%;'>
+				<input type='text' name='name' id='dmoz_description_starter' class='form-control' placeholder='some-domain.com'>
+				<div class='input-group-btn'>
+					<button class='btn btn-primary' onclick="search_dmoz_description()">Search</button>
+				</div>
+			</div>
+			
+		</div>
+	</div>
+	
+	<div class='row domain_suggest' id='html_meta_description' style='display:none;'>
+		<div class='col-md-12'>
+			<br>
+			<p>This finds similar domains to the one entered, by comparing their meta description tags</p>
+			<div class='input-group' style='width:50%;margin: 0 auto;'>
+				<input type='text' name='name' id='html_meta_description_starter' class='form-control' placeholder='some-domain.com'>
+				<div class='input-group-btn'>
+					<button class='btn btn-primary' onclick="search_html_meta_description()">Search</button>
+				</div>
+			</div>
+			<br>
+			<table class='table table-bordered table-hover' id='html_meta_description_table'>
+				<thead>
+					<tr>
+						<th>URL</th><th>Similarity</th><th>Rank</th><th>Meta Description</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+		</div>
+	</div>
+	
+	<div class='row domain_suggest' id='dmoz_categories' style='display:none;'>
+		<div class='col-md-12'>
+			<h4 class='rowtitle'>DMOZ Categories</h4>
+			<div class='input-group' style='width:50%;'>
+				<input type='text' name='name' id='dmoz_categories_starter' class='form-control' placeholder='some-domain.com'>
+				<div class='input-group-btn'>
+					<button class='btn btn-primary' onclick="search_dmoz_categories()">Search</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class='row domain_suggest' id='similarsites' style='display:none;'>
+		<div class='col-md-12'>
+			<br>
+			<p>Searches about 14,000 domains that we bought from similarsites.com</p>
+			<div class='input-group' style='width:50%;'>
+				<input type='text' name='name' id='similarsites_starter' class='form-control' placeholder='some-domain.com'>
+				<div class='input-group-btn'>
+					<button class='btn btn-primary' onclick="search_similarsites()">Search</button>
+				</div>
+			</div>
+			<br>
+			<table class='table table-bordered table-hover' id='similarsites_table'>
+				<thead>
+					<tr>
+						<th>URL</th><th>Similarity Score</th><th>Page Title (if present)</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+		</div>
+	</div>
+	
+	<div class='row domain_suggest' id='comscore' style='display:none;'>
+		<div class='col-md-12'>
+			<h4 class='rowtitle'>ComScore</h4>
+			<div class='input-group' style='width:50%;'>
+				<input type='text' name='name' id='comscore_starter' class='form-control' placeholder='some-domain.com'>
+				<div class='input-group-btn'>
+					<button class='btn btn-primary' onclick="search_comscore()">Search</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<script>
+		//Load the category table on page load
+		//load_category_table()
+		{% if data.page == 'new' %}
+		hide_everything()
+		{% endif %}
+		//assign enter press capture events to the text search fields
+		assign_enter_capture()
+	</script>
+	
+	<form name='datatransfer' method='post' action='/new_adgroup' id='data_transfer_form'>
+		<input type='hidden' name='info' id='info'>
+	</form>
+
+{% endblock %}

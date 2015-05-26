@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Bucketer-er</title>
+		<script>
+			if(navigator.userAgent.toLowerCase().indexOf('firefox')==-1)
+			{
+				alert("Bucketerer only supports Firefox. \nLots of things will not work in your current browser\n\n\nAlso why are you not using Firefox?!!1")
+				if (location.href.substring(location.href.length-1)!="/") {
+					location.href = "/"
+				}
+			}
+		</script>
+		<script src='/static/js/functionality.js'></script>
+		<link rel="stylesheet" href="/static/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/static/css/bucketerer.css">
+	</head>
+	<body>
+		<nav class="navbar navbar-default navbar-fixed-top">
+			<div class="container">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand" href="/">Bucketer-er</a>
+				</div>
+				<div id="navbar" class="collapse navbar-collapse">
+					<ul class="nav navbar-nav">
+						<li {% if data.page == 'view' %}class='active'{% endif %}><a href="/view_adgroups">View/Edit AdGroups</a></li>
+						<li {% if data.page == 'new' %}class='active'{% endif %}><a href="/new_adgroup">New AdGroup</a></li>
+						<li {% if data.page == 'explore' %}class='active'{% endif %}><a href="/explore">Explore Domains</a></li>
+					</ul>
+				</div>
+			</div>
+		</nav>
+		<div class="container">
+			{% block content %}{% endblock %}
+		</div>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+	</body>
+</html>

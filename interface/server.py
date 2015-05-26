@@ -1,9 +1,14 @@
-from flask import Flask, render_template, request, make_response, Response, jsonify
-from pymongo import MongoClient
+
 from json import dumps, loads
 from datetime import datetime
+
+from flask import Flask, render_template, request, make_response, Response, jsonify
+from pymongo import MongoClient
+
 import domain_search #module with further filtering capacities etc
 from dmoz import get_cats
+from similarity import find_by_html, find_by_site_description, find_by_similarsites
+from auxiliary import add_alexa_rank
 
 app = Flask(__name__)
 c = MongoClient()['bucketerer']
@@ -80,7 +85,89 @@ def add_adgroupsite():
 	
 	return Response(dumps({'answer': "success"}), mimetype='application/json')
 
+@app.route('/delete_adgroup')
+def delete_adgroup():
+	"""Deletes an adgroup"""
+	
+	adgroup_name = request.args.get('name')
+	print [adgroup_name]
+	entry = c['adgroups'].find_one({'name': adgroup_name}, {'_id':1})
+	if not entry:
+		print "entry not found"
+	c['adgroups'].remove({'_id':entry['_id']})
+	
+	return Response(dumps({'answer': "success"}), mimetype='application/json')
+
+@app.route('/get_metrics')
+def get_metrics():
+	"""Retrives and recalculates metrics for a group"""
+	
+	adgroup_name = request.args.get('adgroup_name')
+	
+	recalculate_metrics(adgroup_name)
+	metrics = get_metrics(adgroup_name)
+	
+	return Response(dumps(metrics), mimetype='application/json')
+
+@app.route("/search_html_meta_description")
+def search_html_meta_description():
+	"""Searches for a site via HTML meta desc"""
+
+	domain = request.args.get('domain')
+	results = find_by_html(c, domain)
+	results = add_alexa_rank(c, results)
+	
+	return Response(dumps(results), mimetype='application/json')
+
+@app.route("/search_similarsites")
+def search_similarsites():
+	"""Searches for a site in the similarsites.com data"""
+
+	domain = request.args.get('domain')
+	
+	results = []
+	
+	data = find_by_similarsites(domain)
+	for x in data:
+		#try and get a title
+		entry = c['domains'].find_one({'domain':x['url'].replace('.', "#"), 'html.page_title':{'$exists':True}}, {'html.page_title':1})
+		title = entry['html']['page_title'] if entry else ""
+		
+		results.append({
+			'url': x['url'],
+			'score': round(x['score'], 4),
+			'title': title
+		})
+	
+	results = results[:50]
+	
+	return Response(dumps(results), mimetype='application/json')
+
 ###### Page Functionality
+
+@app.route('/import', methods=['POST', 'GET'])
+def import_data():
+	"""Imports data to an adgroup.
+	Page uses ajax to update the group so not much decisioning necessary here."""
+	
+	data = {}
+	
+	adgroup_name = request.args.get('name')
+	if adgroup_name:
+		data['adgroup'] = adgroup_name
+	
+	data['adgroups'] = [x['name'] for x in c['adgroups'].find({}, {'name':1})]
+	
+	print data
+	
+	return render_template("import.html", data=data)
+
+@app.route('/export')
+def export_data():
+	"""Exports data to a file"""
+	
+	adgroup_name = request.args.get('name')
+
 @app.route('/explore')
 def explore_domains():
 	data = {}
@@ -97,11 +184,30 @@ def explore_domains():
 	else:
 		
 		#get information about the website
-		#1) Related sites table
+		#1) Alexa related sites table
 		if 'RL' in entry['alexa']['RLS']:
-			data['related_sites'] = [{"name": x['@TITLE'], "url": x['@HREF'][:-1]} for x in entry['alexa']['RLS']['RL']]
+			data['alexa_related_sites'] = [{"name": x['@TITLE'], "url": x['@HREF'][:-1]} for x in entry['alexa']['RLS']['RL']]
 		else:
-			data['related_sites'] = False
+			data['alexa_related_sites'] = False
+		
+		#2) SimilarSites
+		if 'similar' in entry:
+			if 'similarsites' in entry['similar']:
+				ss = []
+				for x in entry['similar']['similarsites']:
+					
+					#try and get a site title
+					try:
+						title = c['domains'].find_one({'domain':x['url'].replace('.', '#')}, {'html.page_title': 1})['html']['page_title']
+					except Exception:
+						title = ""
+					
+					ss.append({'url': x['url'], "title": title})
+					
+				data['ss_related_sites'] = ss
+		
+		#3) META related sites
+		data['meta_related_sites'] = find_by_html(c, data['domain_name'])
 	
 	return render_template("explore.html", data=data)
 

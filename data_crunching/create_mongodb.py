@@ -32,14 +32,26 @@ def import_alexa_data(c):
 			url = d['ALEXA']['@URL']
 			domain = url[:-1] if url.endswith('/') else url #remove trailing slash
 			domain = domain.replace('.', '#')
-			if not c['bucketerer']['domains'].find_one({'domain':domain}, {'domain':1}):
+			
+			entry = c['bucketerer']['domains'].find_one({'domain':domain})
+			
+			if entry:
+				if 'alexa' not in entry:
+					c['bucketerer']['domains'].update({'_id': entry['_id']},
+						{
+							'$set': {
+								'alexa': d["ALEXA"]
+							}
+						}
+					)
+			else:
 				c['bucketerer']['domains'].insert(
 					{
 						'domain': domain,
 						'alexa': d["ALEXA"]
 					}
 				)
-
+	
 def import_existing_buckets(c):
 	"""Imports existing buckets from cats.json. Requires a mongodb connection as the first argument"""
 	
@@ -79,6 +91,10 @@ def create():
 	print "Creating alexa rank"
 	create_alexa_rank()
 	
+	#3) Clean up
+	print "cleaning"
+	clean_up()
+	
 	#3) Import existing adgroups from cats.json
 	#import_existing_buckets(mongodb)
 
@@ -117,18 +133,23 @@ def create_alexa_rank():
 					'alexa.rank': rankings[domain]
 				}
 			})
-		if n % 1000 == 0:
+		if n % 100000 == 0:
 			print n
 	
 def clean_up():
 	"""Removes corrupted records"""
 	to_delete = []
+	domains = []
 	c = MongoClient()['bucketerer']['domains']
 	for x in c.find({}, {'domain':1}):
 		if "__" in x['domain']:
 			to_delete.append(x['_id'])
+			domains.append(x['domain'])
 		if "#" not in x['domain']:
 			to_delete.append(x['_id'])
+			domains.append(x['domain'])
+	
+	print "Deleting: {0}".format(domains)
 	
 	for x in to_delete:
 		c.remove({'_id':x})
