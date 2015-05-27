@@ -147,18 +147,40 @@ def search_similarsites():
 
 @app.route('/import', methods=['POST', 'GET'])
 def import_data():
-	"""Imports data to an adgroup.
-	Page uses ajax to update the group so not much decisioning necessary here."""
+	"""Imports data to an adgroup."""
 	
 	data = {}
 	
-	adgroup_name = request.args.get('name')
-	if adgroup_name:
-		data['adgroup'] = adgroup_name
+	if request.method == 'POST':
+		#de-serialize
+		print request.form['domain_data']
+		domain_data = loads(request.form['domain_data'])
+		
+		#save to the group
+		total = 0
+		for domain in domain_data['sites']:
+			entry = c['adgroups'].find_one({'name': domain_data['adgroup']}, {'sites':1})
+			
+			if domain:
+				if domain not in entry['sites']:
+					total += 1
+					entry['sites'].append(domain)
+			
+			c['adgroups'].update({'_id':entry['_id']}, {"$set": {"sites": entry['sites']}})
+		
+		#set message
+		data['message'] = "Added {0} sites to {1}.".format(total, domain_data['adgroup'])
+		
+		#set adgroup name
+		data['adgroup'] = domain_data['adgroup']
+		
+	else:
+		adgroup_name = request.args.get('name')
+		if adgroup_name:
+			data['adgroup'] = adgroup_name
 	
+	#get the list of domains for the select box
 	data['adgroups'] = [x['name'] for x in c['adgroups'].find({}, {'name':1})]
-	
-	print data
 	
 	return render_template("import.html", data=data)
 

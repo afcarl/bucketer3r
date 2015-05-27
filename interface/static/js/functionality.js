@@ -518,16 +518,6 @@ function assign_enter_capture() {
 	}
 }
 
-function save_imported_data(){
-	//Saves imported data
-	
-	//add to POST form
-	//clear the boxes and hide the area
-	//submit iframe
-	//display success message
-	
-}
-
 function process_import(){
 	//Handles data importing (apart from the final submit)
 	
@@ -538,11 +528,12 @@ function process_import(){
 	data = clean_import_data(raw_data)
 	if (data === false) {
 		alert("There's something wrong with the data you tried to import")
+		return false
 	}
 	
 	//which adgroup
 	adgroup = document.getElementById("which_adgroup").value
-	if (value.indexOf("Select an")!=-1) {
+	if (adgroup.indexOf("Select an")!=-1) {
 		alert("Please select an adgroup to import into.\n\nIf you'd like to create a new adgroup altogether, please use the 'New Adgroup' link above first. ")
 		return false
 	}
@@ -550,6 +541,8 @@ function process_import(){
 	//shrink the text import field in half
 	text_import_div = document.getElementById("text_import_div")
 	text_import_div.className = 'col-md-6'
+	//and the controls box underneath
+	document.getElementById("importcontrols_box").className = "col-md-6 form-inline importcontrols"
 	
 	//create a second div to the right
 	var conf_div = document.createElement('div')
@@ -560,43 +553,75 @@ function process_import(){
 	//create a button
 	var submit_button = document.createElement("button")
 	submit_button.className = "btn btn-primary"
-	submit_button.innerHTML = "Looks good, save these to " + adgroup
+	submit_button.innerHTML = "Looks good, save these to \"" + adgroup + "\""
 	submit_button.addEventListener("click", function(){
-		return function(){
-			//set form data
-			var field = document.getElementById("domain_data")
-			var container = document.getElementById("sitelist")
-			
-			data = {
-				'adgroup': adgroup,
-				'sites': []
-			}
-			
-			for (var x in container.children) {
-				site = container.children[x].innerHTML
-				data.sites.push(site)
-			}
-			
-			field.value = JSON.stringify(data)
-			
-			//submit it
-			var form = document.getElementById("data_transfer")
-			form.submit()
+		//set form data
+		var field = document.getElementById("domain_data")
+		var container = document.getElementById("sitelist")
+		
+		post_data = {
+			'adgroup': adgroup,
+			'sites': []
 		}
+		
+		for (var x in container.children) {
+			site = container.children[x].innerHTML
+			if (site) {
+				post_data.sites.push(site)
+			}
+		}
+		
+		field.value = JSON.stringify(post_data)
+		
+		//submit it
+		var form = document.getElementById("data_transfer")
+		form.submit()
 	})
+	conf_div.appendChild(submit_button)
 	
 	//create a list of domains
-	
-	
-	
+	list = document.createElement('ul')
+	list.id = 'sitelist'
+	list.style.marginTop = '15px'
+	for (var x in data) {
+		li = document.createElement('li')
+		li.innerHTML = data[x]
+		list.appendChild(li)
+	}
+	conf_div.appendChild(list)
 }
 
 function clean_import_data(data){
 	//Cleans up import data
 	
 	//replace commas and tab characters with spaces
-	//tokenize into domains
-	//check that each domain looks like a domain (at least a dot, strip http/s)
-	//return as a list
+	data = data.replace(new RegExp("[\t\n\r,]", "g"), ' ')
 	
+	//check there's any data at all
+	data = data.trim()
+	if (data == "") {
+		return false
+	}
+	
+	//tokenize into domains
+	data = data.split(" ")
+	domains = []
+	for (var x in data) {
+		chunk = data[x].trim()
+		if (chunk) {
+			if (chunk != "") {
+				if (chunk.indexOf(".")!=-1) { //must have a dot
+					chunk = chunk.toLowerCase()
+					domains.push(chunk) //could probably do better validation in the future
+				}
+			}
+		}
+	}
+	
+	if (domains.length == 0) {
+		return false
+	}
+	
+	//return as a list
+	return domains
 }

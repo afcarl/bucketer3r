@@ -4,6 +4,9 @@
     <div class='row'>
         <div class='col-md-12'>
             <h3>Import data to an adgroup</h3>
+            <p>
+                (Domains should be entered without the <i>http://</i> and separated by commas, newlines or tabs.) 
+            </p>
         </div>
     </div>
     {% if data.message %}
@@ -13,24 +16,24 @@
         </div>
     </div>
     {% endif %}
-    <div class='row'>
+    <div class='row' style='margin-top:15px;'>
         <div class='col-md-12' id='text_import_div'>
             <textarea id='importtext' class='form-control'></textarea>
         </div>
     </div>
     <div class='row'>
-        <div class='col-md-12 form-inline importcontrols'>
+        <div class='col-md-12 form-inline importcontrols' id='importcontrols_box'>
             <select class='form-control' id='which_adgroup'>
                 <option selected>Select an adgroup to import into</option>
                 {% for x in data.adgroups %}
                 <option value='{{x}}'{% if x == data.adgroup %} selected{% endif %}>{{x}}</option>
                 {% endfor %}
             </select>
-            <input type='button' class='btn btn-primary' onclick='import_data()' value='Import Data'>
+            <input type='button' class='btn btn-primary' onclick='process_import()' value='Process Data'>
         </div>
     </div>
-    <form name='data_transfer' method='POST' action='/import'>
-        <input type='hidden' name='domain_data'>
+    <form name='data_transfer' method='POST' action='/import' id='data_transfer'>
+        <input type='hidden' name='domain_data' id='domain_data'>
     </form>
 
 {% endblock %}

@@ -357,7 +357,11 @@ def find_by_html(connection, starter_site, check_cache=True):
 	results = [{"url": "", "score": 0, "desc": ""} for x in range(50)] #ranking
 	
 	#get starter site's description to compare things to
-	starter_desc = entry['html']['meta_description']
+	try:
+		starter_desc = entry['html']['meta_description']
+	except (KeyError, TypeError):
+		return []
+	
 	starter_desc = tokenize_clean(starter_desc) #clean it and tokenize it
 	starter_vector = Counter(starter_desc) #vectorize it
 	
