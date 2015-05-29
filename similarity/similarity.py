@@ -273,9 +273,8 @@ def search_by_domain_keyword(c, kw):
 	
 	return domains
 
-def find_by_site_description(starter_site, index):
-	"""Given a starter site, it analyzes it and tries to
-	find similar websites by matching site description. These are dmoz descriptions"""
+def find_by_dmoz_description(starter_site, index):
+	"""Given a starter site, it analyzes it and tries to find similar websites by matching the dmoz description."""
 	
 	results = [["", 0, ""] for x in range(50)] #ranking
 	
@@ -303,102 +302,150 @@ def find_by_site_description(starter_site, index):
 
 	return results
 
-def find_by_similarsites(starter_site):
+def find_by_similarsites(c, starter_site=False, adgroup=False):
 	"""Searches similarsites crawled data"""
 	
-	c = create_connection()
+	existing = set()
+	if adgroup:
+		existing = set(c['adgroups'].find_one({'name':adgroup},{'sites':1})['sites'])
 	
-	entry = c['domains'].find_one({'domain':starter_site.replace('.', "#"), 'similar.similarsites':{'$exists':True}}, {'similar.similarsites':1})
-	if entry:
-		return entry['similar']['similarsites']
+	if starter_site:
+		entry = c['domains'].find_one({'domain':starter_site.replace('.', "#"), 'similar.similarsites':{'$exists':True}}, {'similar.similarsites':1})
+		if entry:
+			return [x for x in entry['similar']['similarsites'] if x['url'] not in existing]
+		else:
+			return []
 	else:
-		return []
-	
+		sites = defaultdict(int)
+		for existing_site in existing:
+			try:
+				data = c['domains'].find_one({'domain':existing_site.replace('.','#')},{'similar.similarsites':1})['similar']['similarsites']
+				for similar_site in data:
+					sites[similar_site['url']] += similar_site['score'] #merge dupes
+			except (KeyError, TypeError):
+				pass
+		
+		k = sites.keys()
+		for x in k: #merrr
+			if x in existing:
+				del sites[x]
+		
+		
+		#print sorted(list(sites.keys()))
+		#print sorted(list(existing))
+		
+		sites = sorted([{'url':k,'score':v} for k,v in sites.iteritems()], key=lambda x: x['score'], reverse=True)
+		return sites
 
-def find_by_html(connection, starter_site, check_cache=True):
+def find_by_html(connection, starter_site=False, starter_text=False, check_cache=True, adgroup=False):
 	"""Searches and ranks by the page's meta description in the HTML
 	connection	  :  a mongodb connection
 	starter_site  :  some domain name
+	starter_text  :  some text instead of a domain name (typically some compiled domains)
 	verbose		  :  whether you want the results printed to the terminal
 	check_cache	  :  set to false if you want to always pull new data
 	"""
 	
-	#get the description of the starter site
-	domain = starter_site.replace('.', '#')
-	
-	entry = connection['domains'].find_one(
-		{
-			'html.meta_description': {'$exists':True},
-			'domain': domain
-		},
-		{
-			'html.meta_description': 1,
-			'similar.meta_description': 1,
-			'domain': 1
-		})
-	
-	#check if there's anything in the cache
-	results = []
-	if check_cache:
+	#first grab a set of sites that we shouldn't match (since they already exist)
+	existing = set()
+	if adgroup:
 		try:
-			if entry:
-				results = entry['similar']['meta_description']
-				if results:
-					for x in range(len(results)):
-						desc = connection['domains'].find_one({"domain":results[x]['domain'].replace('.',"#")}, {"html.meta_description":1})
-						desc = desc['html']['meta_description']
-						results[x]['desc'] = desc
-					
-					return results
-		except KeyError:
+			existing = set(connection['adgroups'].find_one({'name':adgroup}, {'sites':1})['sites'])
+		except (TypeError, KeyError):
 			pass
 	
-	#pull some data
-	results = [{"url": "", "score": 0, "desc": ""} for x in range(50)] #ranking
+	#if a starter site was provided, get the description
+	if starter_site:
+		domain = starter_site.replace('.', '#')
+		#get the meta description
+		entry = connection['domains'].find_one({'html.meta_description': {'$exists':True}, 'domain': domain }, {'html.meta_description': 1, 'similar.meta_description': 1, 'domain': 1})
 	
-	#get starter site's description to compare things to
-	try:
-		starter_desc = entry['html']['meta_description']
-	except (KeyError, TypeError):
-		return []
+		#check if there's anything in the cache
+		results = []
+		if check_cache:
+			try:
+				if entry:
+					results = entry['similar']['meta_description']
+					if results:
+						for x in range(len(results)):
+							desc = connection['domains'].find_one({"domain":results[x]['domain'].replace('.',"#")}, {"html.meta_description":1})
+							desc = desc['html']['meta_description']
+							results[x]['desc'] = desc
+						return results
+			except KeyError:
+				pass
+		
+		#nothing was found in the cache
+		#get starter site's description to compare things to
+		try:
+			starter_desc = entry['html']['meta_description']
+		except (KeyError, TypeError):
+			return []
+	else:
+		if starter_text:
+			#use the starter text instead
+			starter_desc = starter_text
+		else:
+			#starter desc must be that of all the adgroup items combined
+			starter_desc = ""
+			for site in existing:
+				entry = connection['domains'].find_one({'domain':site.replace('.', "#")}, {'html.meta_description':1})
+				if entry:
+					try:
+						desc = entry['html']['meta_description']
+						starter_desc += " " + desc
+					except KeyError:
+						pass
 	
+	#set up a ranking placeholder for the top 50 results
+	results = [{"url": "", "score": 0, "desc": ""} for x in range(50)]
+	
+	#clean/tokenize/vectorize the text
 	starter_desc = tokenize_clean(starter_desc) #clean it and tokenize it
 	starter_vector = Counter(starter_desc) #vectorize it
+	
+	print starter_vector
 	
 	#scan all other domains
 	for n, record in enumerate(connection['domains'].find({'html.meta_description':{'$exists':True}}, {'html.meta_description':1, 'domain':1})):
 		domain = record['domain'].replace("#", ".")
 		
 		if domain != starter_site:
-			
-			desc = record['html']['meta_description']
-			kw_vector = Counter(tokenize_clean(desc)) #vectorize desc
-			cosim = opt_cosine_similarity(starter_vector, kw_vector)
-			
-			if cosim:
-				if cosim > results[-1]["score"]:
-					for x in range(len(results)):
-						if cosim > results[x]["score"]:
-							results = results[:x] + [{"domain":domain, "score":cosim, "desc": desc}] + results[x:]
-							results = results[:50]
-							break
+			if domain not in existing:
+				desc = record['html']['meta_description']
+				kw_vector = Counter(tokenize_clean(desc)) #vectorize desc
+				cosim = opt_cosine_similarity(starter_vector, kw_vector)
+				
+				if cosim:
+					if cosim > results[-1]["score"]:
+						for x in range(len(results)):
+							if cosim > results[x]["score"]:
+								results = results[:x] + [{"domain":domain, "score":cosim, "desc": desc}] + results[x:]
+								results = results[:50]
+								break
 	
 	for x in range(len(results)):
 		if results[x]["score"] == 0:
 			results = results[:x] #cut off blank tail of results if present
 			break
 	
-	#save to cache
-	connection['domains'].update({'_id': entry['_id']},
-		{
-			'$set': { #have to remove the description, don't want to save it twice
-				'similar.meta_description': [{'domain':x['domain'],'score':x['score']} for x in results]
-			}
-		})
+	if starter_site:
+		#save to cache
+		connection['domains'].update({'_id': entry['_id']},
+			{
+				'$set': { #have to remove the description, don't want to save it twice
+					'similar.meta_description': [{'domain':x['domain'],'score':x['score']} for x in results]
+				}
+			})
 	
 	return results
 
-
+def suggest_by_existing_content(c, sitelist):
+	"""Accepts a list of sites. Suggests more similar sites by various metrics. Sorts them by popularity initially."""
+	
+	
+	
+	
 
 
 

@@ -1,15 +1,12 @@
 #Functionality to search for various domains
 
-def get_domains_by_name(kw, c, name=False):
+def get_domains_by_name(kw, c, adgroup=False):
 	"""Searches for domains by a text fragment that matches the domain name (not the tld)"""
 	domains = []
 	
 	existing = set()
-	if name:
-		existing = set(c['adgroups'].find_one({'name':name}, {'sites':1})['sites'])
-	
-	print existing
-	print len(existing)
+	if adgroup:
+		existing = set(c['adgroups'].find_one({'name': adgroup}, {'sites':1})['sites'])
 	
 	for domain in c['domains'].find({}, {'domain': 1, 'alexa.rank.latest':1}):
 		try:

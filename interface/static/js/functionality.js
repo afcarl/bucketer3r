@@ -90,7 +90,7 @@ function load_category_table() {
 
 function filter_domains(){
 	//Handles AJAX requests for thought starters when creating a new adgroup
-	starter = document.getElementById('thought_starter').value
+	starter = document.getElementById('domain_name_starter').value
 	if (starter.length < 3) {
 		return false
 	}
@@ -101,29 +101,30 @@ function filter_domains(){
 	url = "/filter_domains?text=" + starter
 	if (location.href.indexOf('name=')!=-1) { //add a name if necessary
 		name = location.href.split('name=')[1].split('&')[0]
-		url += '&name=' + name
+		url += '&adgroup=' + name
 	}
 	//run
 	var xmlhttp;
 	xmlhttp=new XMLHttpRequest()
 	xmlhttp.onreadystatechange=function(){
 		if (xmlhttp.readyState==4 && xmlhttp.status==200){
-			resp = xmlhttp.responseText
+			var resp = xmlhttp.responseText
 			resp = JSON.parse(resp) //parse the json
 			tbody.innerHTML = '' //clear the spinner
 			for (var x in resp) {
-				row = document.createElement("tr")
+				var row = document.createElement("tr")
 				
-				domain = document.createElement("td")
-				domain_text = document.createTextNode(resp[x].domain)
+				var domain = document.createElement("td")
+				var button = document.createElement("button")
+				var domain_text = document.createTextNode(resp[x].domain)
 				domain.appendChild(domain_text)
 				
-				rank = document.createElement("td")
-				rank_number = document.createTextNode(resp[x].rank)
+				var rank = document.createElement("td")
+				var rank_number = document.createTextNode(resp[x].rank)
 				rank.appendChild(rank_number)
 				
-				traffic = document.createElement("td")
-				traffic_number = document.createTextNode(resp[x].traffic)
+				var traffic = document.createElement("td")
+				var traffic_number = document.createTextNode(resp[x].traffic)
 				traffic.appendChild(traffic_number)
 				
 				row.appendChild(domain)
@@ -191,6 +192,7 @@ function expandcat(row_id) {
 		
 		buttons = [
 			["Edit", '/new_adgroup?name=' + adgroup_name],
+			["Analyze", "/analyze?adgroup=" + adgroup_name],
 			["Delete", delete_adgroup(adgroup_name)],
 			["Import", '/import?name=' + adgroup_name],
 			["Export", '/export?name=' + adgroup_name]
@@ -251,7 +253,9 @@ function delete_adgroup(adgroup_name) {
 						}
 						//now remove that row in the page
 						if (location.href.indexOf('/view_adgroups')!=-1) {
-							
+							//remove row and info_row
+							document.removeChild('info_row_' + adgroup_name)
+							document.removeChild('row_' + adgroup_name)
 						}
 					}
 				}
@@ -312,6 +316,23 @@ function add_site(domain, node_to_remove=false){
 		if (xmlhttp.readyState==4 && xmlhttp.status==200){
 			resp = JSON.parse(xmlhttp.responseText)
 			if (resp['answer'] == 'success') {
+				//add site to box in the middle
+				button = document.createElement('button')
+				button.className = 'btn adgroupsite'
+				button.id = 'adgroupsite_' + domain.replace(/\./g, '_')
+				button.addEventListener("click",
+					function(){
+						//console.log('about to remove domain ' + domain)
+						remove_site(domain)
+					}
+				)
+				icon = document.createElement('span')
+				icon.className = 'glyphicon glyphicon-remove'
+				icon.setAttribute('aria-hidden', 'true')
+				button.appendChild(icon)
+				button.appendChild(document.createTextNode(" "+domain))
+				document.getElementById('ddbox_container').appendChild(button)
+				
 				console.log("Added " + domain)
 			}else{
 				console.log("Error adding " + domain)
@@ -320,6 +341,12 @@ function add_site(domain, node_to_remove=false){
 	}
 	xmlhttp.open("GET","/add_adgroupsite?adgroup_name=" + adgroup_name + "&domain=" + domain);
 	xmlhttp.send();	
+}
+
+function get_adgroup_name() {
+	//gets the name of the current adgroup
+	//should not just extract from the URL
+	return document.getElementById('info_adgroup_name').innerHTML
 }
 
 function recalculate_metrics(){
@@ -333,20 +360,54 @@ function recalculate_metrics(){
 			var metrics = Object.keys(resp)
 			for (var x in metrics) {
 				if (metrics[x].substring(0,7)==="metric_") {
-					document.getElementById(metrics[x]).innerHTML = resp[metrics[x]]
+					element = document.getElementById(metrics[x])
+					if (element) {
+						element.innerHTML = resp[metrics[x]]
+					}else{
+						console.log(metrics[x] + " element not found")
+					}
+				}
+			}
+			calculate_colors() //set colors/flags if things are over limits
+		}
+	}
+	xmlhttp.open("GET","/get_metrics?adgroup_name=" + get_adgroup_name());
+	xmlhttp.send();	
+}
+
+function calculate_colors() {
+	//set colors/flags in the metrics box if things are over limits
+	
+	limits = {
+		'metric_maxp': 0.5
+	}
+	
+	spans = document.getElementsByTagName('span')
+	for (var x in spans) {
+		if (spans[x].id) {
+			if (spans[x].id.substring(0,7)==="metric_") {
+				if (spans[x].id in Object.keys(limits)) {
+					if (parseFloat(spans[x].innerHTML) >= limits[spans[x].id]) {
+						//set as red
+						console.log('setting red ' + spans[x].id)
+						spans[x].style.color = 'red'
+					}else{
+						//set as green
+						console.log('setting green ' + spans[x].id)
+						spans[x].style.color = 'green'
+					}
 				}
 			}
 		}
 	}
-	xmlhttp.open("GET","/get_metrics?adgroup_name=" + adgroup_name);
-	xmlhttp.send();	
-	
 }
 
 function remove_site(domain){
 	//Removes a site from the box on the new_adgroup page
 	//remove the box
-	box = document.getElementById('adgroupsite_' + domain.replace(/\./g, "_"))
+	box_id = 'adgroupsite_' + domain.replace(/\./g, "_")
+	console.log(box_id)
+	box = document.getElementById(box_id)
 	box.parentNode.removeChild(box)
 	
 	recalculate_metrics() //recalculate metrics in the box 
@@ -390,10 +451,16 @@ function switch_suggest(tab){
 	
 }
 
-function search_html_meta_description(){
+function search_html_meta_description(all=false){
 	//Searches for similar domains by HTML meta description
 	
-	domain = document.getElementById("html_meta_description_starter").value
+	if (all) {
+		//search all the domains in the adgroup rather than a specific one
+		url = "/search_html_meta_description?adgroup=" + get_adgroup_name()
+	}else{
+		domain = document.getElementById("html_meta_description_starter").value
+		url = "/search_html_meta_description?domain=" + domain
+	}
 	
 	//create the spinner row
 	tbody = document.getElementById('html_meta_description_table').children[1]
@@ -423,7 +490,7 @@ function search_html_meta_description(){
 				}
 				
 				button = "<button class='btn adgroupsite' onclick='add_site'><span class='glyphicon glyphicon-plus' aria-hidden='true'></span> <span>"+url+"</span></button>"
-				button.replace('add_site', 'add_site("' + url + '")')
+				button = button.replace('add_site', 'add_site("' + url + '", this.parentNode.parentNode)')
 				
 				//construct the row
 				data = "<tr>"
@@ -441,14 +508,20 @@ function search_html_meta_description(){
 			}
 		}
 	}
-	xmlhttp.open("GET","/search_html_meta_description?domain=" + domain);
+	xmlhttp.open("GET",url);
 	xmlhttp.send();
 }
 
-function search_similarsites(){
+function search_similarsites(all=false){
 	//Searches similarsites.com data
 	
-	domain = document.getElementById("similarsites_starter").value
+	if (all) {
+		url = "/search_similarsites?adgroup=" + get_adgroup_name()
+	}else{
+		domain = document.getElementById("similarsites_starter").value
+		url = "/search_similarsites?domain=" + domain
+	}
+	
 	
 	//create the spinner row
 	tbody = document.getElementById('similarsites_table').children[1]
@@ -476,10 +549,12 @@ function search_similarsites(){
 				button += "<span>"+url+"</span></button>"
 				button = button.replace('add_site', 'add_site("' + url + '", this.parentNode.parentNode)')
 				
-				console.log(button)
+				link = "<a href='http://" + url + "' target='blank' role='button' onmouseover='open_url_modal' onmouseout='close_url_modal()' class='btn'><span class='glyphicon glyphicon-link' aria-hidden='true'></span></button></a>"
+				link = link.replace('open_url_modal', 'open_url_modal(event, "' + url + '")')
 				
 				//construct the row
 				data = "<tr>"
+				data += "<td>" + link + "</td>"
 				data += "<td>" + button + "</td>"
 				data += "<td>" + score + "</td>"
 				data += "<td>" + title + "</td>"
@@ -493,7 +568,7 @@ function search_similarsites(){
 			}
 		}
 	}
-	xmlhttp.open("GET","/search_similarsites?domain=" + domain);
+	xmlhttp.open("GET",url);
 	xmlhttp.send();
 }
 
@@ -612,6 +687,9 @@ function clean_import_data(data){
 			if (chunk != "") {
 				if (chunk.indexOf(".")!=-1) { //must have a dot
 					chunk = chunk.toLowerCase()
+					if (chunk.substring(chunk.length-1, chunk.length)=="*") { //comscore style
+						chunk = chunk.substring(0, chunk.length-1) //remove a trailing asterisk 
+					}
 					domains.push(chunk) //could probably do better validation in the future
 				}
 			}
@@ -625,3 +703,103 @@ function clean_import_data(data){
 	//return as a list
 	return domains
 }
+
+function list_checkbox_controls(){
+	//Checks if multiple checkboxes have been checked
+	
+}
+
+function export_all() {
+	//Downloads the current table as an excel file
+	iframe = document.createElement("iframe")
+	iframe.setAttribute("width", 1)
+	iframe.setAttribute("height", 1)
+	iframe.setAttribute("frameborder", 0)
+	document.body.appendChild(iframe)
+	iframe.setAttribute("src", "/export_all")
+}
+
+function add_individual(){
+	var site = prompt('Add an individual site to the bucket:', 'domain.com')
+	if (site != null) {
+		if (site.trim() != ""){
+			add_site(site)
+		}
+	}
+}
+
+function close_url_modal() {
+	modal = document.getElementById('url_modal')
+	if (modal != undefined) {
+		document.body.removeChild(modal)
+	}
+}
+
+function open_url_modal(e, domain) {
+	//shows an iframe with a modal
+	
+	console.log('opening url modal for ' + domain)
+	var url_modal = document.createElement('div')
+	url_modal.id = 'url_modal'
+	url_modal.className = 'urlmodal'
+	
+	iframe = document.createElement('iframe')
+	iframe.src = "http://" + domain
+	url_modal.appendChild(iframe)
+	
+    url_modal.style.left = e.clientX+100  + "px";
+
+	var top_val = e.clientY + window.pageYOffset
+	if (window.innerHeight - e.clientY < 500) {
+		console.log('would hit bottom')
+		
+		console.log(window.innerHeight-e.clientY, 500-window.innerHeight-e.clientY)
+		
+		url_modal.style.top = e.clientY + window.pageYOffset + "px"
+	}else{
+		url_modal.style.top = top_val + "px";
+	}
+	
+	
+    
+	document.body.appendChild(url_modal)
+}
+
+function flag_horrible_site(site, element) {
+	//flags a horrible site
+	
+	flagged = false //TODO
+	
+	//if flagged, unflag
+	//if not flagged, flag
+	if (flagged) {
+		var url = '/flag_url?action=unflag'
+	}else{
+		var url = '/flag_url?action=flag'
+	}	
+	
+	var xmlhttp;
+	xmlhttp=new XMLHttpRequest()
+	xmlhttp.onreadystatechange=function(){
+		if (xmlhttp.readyState==4 && xmlhttp.status==200){
+			resp = xmlhttp.responseText
+			resp = JSON.parse(resp) //parse the json
+			
+			//set background color
+			
+			if (flagged) {
+				//set to white
+				
+			}else{
+				//set to red
+				
+			}
+			
+		}
+	}
+	xmlhttp.open("GET",url);
+	xmlhttp.send();
+	
+}
+
+

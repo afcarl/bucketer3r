@@ -1,0 +1,34 @@
+{% extends "main_template.html" %}
+{% block content %}
+	
+	<div class='row' style='margin-top: 20px;'>
+		<div class='col-md-12'>
+			<ul class="nav nav-tabs">
+				<li id='add_domains_tab' role="presentation"><a href="/new_adgroup?name={{data.adgroup_name}}">Add Domains to Adgroup</a></li>
+				<li id='analyze_domains_tab' role="presentation" class="active"><a href="/analyze?adgroup={{data.adgroup_name}}">Analyze Domains in Adgroup</a></li>
+			</ul>
+		</div>
+	</div>
+	
+	<div class='row'>
+		<div class='col-md-12'>
+			<table class='table table-bordered table-hover sortable' style='margin-top: 20px'>
+				<thead>
+					<tr style='background-color:lightblue;'>
+						<th>Domain name</th><th>Estimated Traffic (Q1 2015)</th><th>Alexa Rank</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for site in data.sites %}
+					<tr>
+						<td>{{site.name}}</td>
+						<td>{{site.estimated_traffic}}</td>
+						<td>{{site.alexa_rank}}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	
+{% endblock %}

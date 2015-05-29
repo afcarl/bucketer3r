@@ -23,6 +23,46 @@ def convert_single_alexa_file(file_location):
 			return False
 	return f
 
+def import_comscore_data():
+	"""Imports comscore rankings"""
+	
+	c = set_up_mongodb_connection()['bucketerer']
+	
+	#import Q4 2014
+	with open('/Users/mruttley/Documents/2015-04-22 AdGroups/brendan/comscoreQ4FirefoxTraffic.csv') as f:
+		for line in f.readlines()[1:]:
+			if line.endswith('\n'):
+				line = line[:-1]
+			line = line.split(',')
+			#parse the line
+			domain = line[0].lower().replace('*','')
+			data = {
+				"rank": float(line[1]),
+				"unique_visitors": float(line[2]),
+				"reach": float(line[3]),
+				"reach_index": float(line[4]),
+				"visits": float(line[5]),
+				"minutes": float(line[6]),
+				"pages": float(line[7]),
+				"visits_per_visitor": float(line[8]),
+				"minutes_per_visitor": float(line[9]),
+				"pages_per_visitor": float(line[10])
+			}
+			entry = c['domains'].find_one({'domain': domain.replace('.', '#')}, {'_id':1})
+			if not entry:
+				print "Could not find domain: {0}".format(domain)
+			else:
+				c['domains'].update({'_id':entry['_id']},
+					{
+						'$set': {
+							'comscore': {
+								'traffic': {
+									'2015-Q4': data
+								}
+							}
+						}
+					})
+
 def import_alexa_data(c):
 	"""Processes all alexa data. Requires a connection, c"""
 
@@ -69,7 +109,7 @@ def import_existing_buckets(c):
 		)
 
 def set_up_mongodb_connection():
-	"""Sets up an returns a mongodb instance"""
+	"""Sets up and returns a mongodb instance"""
 	try:
 		c = MongoClient()
 		return c

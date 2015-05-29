@@ -21,7 +21,7 @@
 		<div class='col-md-12'>
 			<ul class="nav nav-tabs">
 				<li id='add_domains_tab' role="presentation" class="active"><a href="/new_adgroup?name={{data.adgroup_name}}">Add Domains to Adgroup</a></li>
-				<li id='analyze_domains_tab' role="presentation"><a href="/analyze_adgroup?name={{data.adgroup_name}}">Analyze Domains in Adgroup</a></li>
+				<li id='analyze_domains_tab' role="presentation"><a href="/analyze?adgroup={{data.adgroup_name}}">Analyze Domains in Adgroup</a></li>
 			</ul>
 		</div>
 	</div>
@@ -42,7 +42,7 @@
 				</tr>
 				<tr>
 					<th>Total Domains</th><td><span id='metric_total_domains'>{{data.metric_total_domains}}</span></td>
-					<th>Max P</th><td><span id='metric_max_p'>{{data.metric_max_p}}</span></td>
+					<th>Max P</th><td><span id='metric_maxp'>{{data.metric_maxp}}</span></td>
 				</tr>
 				<tr>
 					<th>Expected Daily Traffic</th><td><span id='metric_expected_daily_traffic'>{{data.metric_expected_daily_traffic}}</span></td>
@@ -53,8 +53,8 @@
 	</div>
 	
 	<div class='row'>
-		<div class='col-md-12'>
-			<div class='ddbox'>
+		<div class='col-md-11'>
+			<div class='ddbox' id='ddbox_container'>
 			{% for site in data.sites %}
 				<button class='btn adgroupsite' onclick="remove_site('{{site}}')" id='adgroupsite_{{site|replace('.', '_')}}'>
 					<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> <span>{{site}}</span>
@@ -62,22 +62,27 @@
 			{% endfor %}
 			</div>
 		</div>
+		<div class='col-md-1' style='text-align:left;vertical-align: bottom;'>
+			<br>
+			<br>
+			<button class='btn btn-primary' onclick='add_individual()'><span class="glyphicon glyphicon-plus" aria-hidden="true"></span></button>
+		</div>
 	</div>
 	
 	<div class='row suggesttabs'>
 		<div class='col-md-12'>
 			<ul class="nav nav-tabs">
-				<li id='domain_name_tab' role="presentation" class="active"><a href="javascript:switch_suggest('domain_name')">Domain Name</a></li>
-				<li id='dmoz_description_tab' role="presentation"><a href="javascript:switch_suggest('dmoz_description')">DMOZ Description</a></li>
+				<li id='domain_name_tab' role="presentation"><a href="javascript:switch_suggest('domain_name')">Domain Name</a></li>
+				<li id='dmoz_description_tab' role="presentation" style='text-decoration: line-through;'><a href="javascript:switch_suggest('dmoz_description')">DMOZ Description</a></li>
 				<li id='html_meta_description_tab' role="presentation"><a href="javascript:switch_suggest('html_meta_description')">HTML Meta Description</a></li>
-				<li id='dmoz_categories_tab' role="presentation"><a href="javascript:switch_suggest('dmoz_categories')">DMOZ Categories</a></li>
-				<li id='similarsites_tab' role="presentation"><a href="javascript:switch_suggest('similarsites')">SimilarSites</a></li>
-				<li id='comscore_tab' role="presentation"><a href="javascript:switch_suggest('comscore')">ComScore</a></li>
+				<li id='dmoz_categories_tab' role="presentation" style='text-decoration: line-through;'><a href="javascript:switch_suggest('dmoz_categories')">DMOZ Categories</a></li>
+				<li id='similarsites_tab' role="presentation" class="active"><a href="javascript:switch_suggest('similarsites')">SimilarSites</a></li>
+				<li id='comscore_tab' role="presentation" style='text-decoration: line-through;'><a href="javascript:switch_suggest('comscore')">ComScore</a></li>
 			</ul>
 		</div>
 	</div>
 	
-	<div class='row domain_suggest' id='domain_name'>
+	<div class='row domain_suggest' id='domain_name' style='display:none;'>
 		<div class='col-md-5'>
 			<h4 class='rowtitle'>Initial thought starters:</h4>
 			<input type='text' name='name' id='domain_name_starter' onkeyup='filter_domains()' class='form-control' placeholder='Domain or category'>
@@ -125,11 +130,10 @@
 		<div class='col-md-12'>
 			<br>
 			<p>This finds similar domains to the one entered, by comparing their meta description tags</p>
-			<div class='input-group' style='width:50%;margin: 0 auto;'>
+			<div class='form-inline' style='margin: 0 auto; text-align: center;'>
+				<button class='btn btn-primary' onclick="search_html_meta_description(all=true)">Search for similar domains to all sites in the bucket</button> or a specific domain: 
 				<input type='text' name='name' id='html_meta_description_starter' class='form-control' placeholder='some-domain.com'>
-				<div class='input-group-btn'>
-					<button class='btn btn-primary' onclick="search_html_meta_description()">Search</button>
-				</div>
+				<button class='btn btn-primary' onclick="search_html_meta_description()">Search</button>
 			</div>
 			<br>
 			<table class='table table-bordered table-hover' id='html_meta_description_table'>
@@ -155,21 +159,20 @@
 		</div>
 	</div>
 	
-	<div class='row domain_suggest' id='similarsites' style='display:none;'>
+	<div class='row domain_suggest' id='similarsites'>
 		<div class='col-md-12'>
 			<br>
 			<p>Searches about 14,000 domains that we bought from similarsites.com</p>
-			<div class='input-group' style='width:50%;'>
-				<input type='text' name='name' id='similarsites_starter' class='form-control' placeholder='some-domain.com'>
-				<div class='input-group-btn'>
-					<button class='btn btn-primary' onclick="search_similarsites()">Search</button>
-				</div>
+			<div class="form-inline" style='text-align:center;'>
+				<button class='btn btn-primary' onclick="search_similarsites(all=true)">Search for similar domains to all sites in the bucket</button> or a specific domain: 
+				<input type='text' name='name' id='similarsites_starter' class='form-control' placeholder='some-domain.com'>				
+				<button class='btn btn-primary' onclick="search_similarsites()">Search</button>
 			</div>
 			<br>
 			<table class='table table-bordered table-hover' id='similarsites_table'>
 				<thead>
 					<tr>
-						<th>URL</th><th>Similarity Score</th><th>Page Title (if present)</th>
+						<th></th><th>URL</th><th>Similarity Score</th><th>Page Title (if present)</th>
 					</tr>
 				</thead>
 				<tbody></tbody>
@@ -189,11 +192,15 @@
 		</div>
 	</div>
 	
+	<span id='info_adgroup_name' style='display:none;'>{{data.name}}</span>
+	
 	<script>
 		//Load the category table on page load
 		//load_category_table()
 		{% if data.page == 'new' %}
 		hide_everything()
+		{% else %}
+		recalculate_metrics()
 		{% endif %}
 		//assign enter press capture events to the text search fields
 		assign_enter_capture()
@@ -202,5 +209,5 @@
 	<form name='datatransfer' method='post' action='/new_adgroup' id='data_transfer_form'>
 		<input type='hidden' name='info' id='info'>
 	</form>
-
+	
 {% endblock %}

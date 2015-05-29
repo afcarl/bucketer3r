@@ -1,20 +1,31 @@
 {% extends "main_template.html" %}
 {% block content %}
-
-	<table class='table table-hover buckettable'>
-		<tr>
-			<th>Bucket Name</th><th>Total Sites</th><th>MaxP <a href='javascript:alert("Explanation goes here")'>(?)</a></th>
-		</tr>
-		{% for bucket in data.buckets %}
-		<tr id='row_{{bucket.name}}'>
-			<td>
-				<a href="javascript:expandcat('row_{{bucket.name}}')">
-					<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {{bucket.name}}</a>
-			</td>
-			<td>{{bucket.total_sites}}</td>
-			<td>?</td>
-		</tr>
-		{% endfor %}
-	</table>
+<div class='row' style='margin-top:20px;'>
+	<div class='col-md-12'>
+		<button id='export_all' onclick='export_all()' class='btn btn-primary' style='float:right;'>Export all the things <span class="glyphicon glyphicon-export" aria-hidden="true"></span></button>
+	</div>
+</div>
+<div class='row' style='margin-top:20px;'>
+	<div class='col-md-12'>
+		<table class='table table-hover buckettable'>
+			<tr>
+				<th style='width:10px;'>&nbsp;</th><th>Bucket Name</th><th>Total Sites</th><th>MaxP <a href='javascript:alert("Explanation goes here")'>(?)</a></th>
+			</tr>
+			{% for bucket in data.buckets %}
+			<tr id='row_{{bucket.name}}'>
+				<td>
+					<input type="checkbox" id='{{bucket.name}}' onclick='list_checkbox_controls()'>
+				</td>
+				<td>
+					<a href="javascript:expandcat('row_{{bucket.name}}')">
+						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {{bucket.name}}</a>
+				</td>
+				<td>{{bucket.total_sites}}</td>
+				<td>{{bucket.maxp}}</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+</div>
 
 {% endblock %}

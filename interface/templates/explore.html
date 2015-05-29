@@ -8,6 +8,70 @@
 		</form>
 	</div>
 </div>
+<hr>
+<div class='row'>
+	<div class='col-md-6'>
+		<!-- Some recent alexa performance data -->
+		{% if data.alexa_performance %}
+		<div id='container' style="min-width: 310px; height: 200px; margin: 0 auto"></div>
+		{% else %}
+		(No Alexa performance data available)
+		{% endif %}
+	</div>
+	<div class='col-md-4 col-md-offset-2'>
+		<h3>Stats</h3>
+		<table class='table table-responsive table-hover table-bordered'>
+			<tbody>
+				<tr>
+					<td>Alexa Rank (as of {{data.alexa_latest_date}})</td><td>#{{data.alexa_rank}}</td>
+				</tr>
+				<tr>
+					<td>Estimated daily traffic</td><td>{{data.estimated_daily_traffic}}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<hr>
+<div class='row'>
+	<div class='col-md-10'>
+		<h3>Other information</h3>
+		<br>
+		<table class='table table-hover table-bordered'>
+			<tbody>
+				<tr>
+					<td>DMOZ categorization</td>
+					<td>
+						<ul style='font-size:smaller;'>
+							{% for cat in data.dmoz %}
+							<li>{{cat}}</li>
+							{% endfor %}
+						</ul>
+					</td>
+				</tr>
+				<tr>
+					<td>Page Title</td><td>{{data.page_title}}</td>
+				</tr>
+				<tr>
+					<td>Alexa Child S-Rating</td><td>{{data.alexa_child_s_rating}}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<div class='col-md-2' style='text-align:center;vertical-align: middle;'>
+		<br><br><br>
+		{% if data.site_exists %}
+			<p>
+				Site is included in bucket "{{data.site_exists}}".
+				<br>
+				<a href="/new_adgroup?name={{data.site_exists}}" class="btn btn-info" role="button"><span class='glyphicon glyphicon-edit' aria-hidden='true'></span> Edit</a>
+			</p>
+		{% else %}
+			<p>Site is not included in any buckets.</p>
+		{% endif %}
+	</div>
+</div>
+<hr>
 <div class='row' style='margin-top: 15px;'>
 	<div class='col-md-4'>
 		<h4>SimilarSites Related Sites</h4>
@@ -74,5 +138,43 @@
 	box.selectionStart = box.value.length
 	
 </script>
+{% if data.alexa_performance %}
+<script src="/static/js/highcharts.js"></script>
+<script src="/static/js/exporting.js"></script>
+<script>
+	$(function () {
+		$('#container').highcharts({
+			chart: {
+				type: 'line'
+			},
+			title: {
+				text: 'Recent Alexa ranking performance'
+			},
+			xAxis: {
+				categories: [{% for x in data.alexa_performance %}"{{x.0}}", {% endfor %}],
+				labels: {
+					enabled: false
+				}
+			},
+	        yAxis: {
+	            title: {
+	                text: 'Rank'
+	            },
+				reversed: true
+			},
+			legend: {
+				enabled: false
+			},
+			series: [{
+				name: 'Alexa Rank',
+				data: [{% for x in data.alexa_performance %}{{x.1}}, {% endfor %}]
+			}],
+			credits: {
+				enabled: false
+			}
+		});
+	});
+</script>
+{% endif %}
 
 {% endblock %}
