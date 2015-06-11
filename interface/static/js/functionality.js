@@ -492,8 +492,12 @@ function search_html_meta_description(all=false){
 				button = "<button class='btn adgroupsite' onclick='add_site'><span class='glyphicon glyphicon-plus' aria-hidden='true'></span> <span>"+url+"</span></button>"
 				button = button.replace('add_site', 'add_site("' + url + '", this.parentNode.parentNode)')
 				
+				link = "<a href='http://" + url + "' target='blank' role='button' onmouseover='open_url_modal' onmouseout='close_url_modal()' class='btn'><span class='glyphicon glyphicon-link' aria-hidden='true'></span></button></a>"
+				link = link.replace('open_url_modal', 'open_url_modal(event, "' + url + '")')
+				
 				//construct the row
 				data = "<tr>"
+				data += "<td>" + link + "</td>"
 				data += "<td>" + button + "</td>"
 				data += "<td>" + score + "</td>"
 				data += "<td>" + rank + "</td>"
