@@ -9,7 +9,11 @@
 	<div class='col-md-12'>
 		<table class='table table-hover buckettable'>
 			<tr>
-				<th style='width:10px;'>&nbsp;</th><th>Bucket Name</th><th>Total Sites</th><th>MaxP <a href='javascript:alert("Explanation goes here")'>(?)</a></th>
+				<th style='width:10px;'>&nbsp;</th>
+				<th>Bucket Name</th>
+				<th>Descriptors</th>
+				<th>Total Sites</th>
+				<th>MaxP <a href='javascript:alert("Explanation goes here")'>(?)</a></th>
 			</tr>
 			{% for bucket in data.buckets %}
 			<tr id='row_{{bucket.name}}'>
@@ -20,6 +24,7 @@
 					<a href="javascript:expandcat('row_{{bucket.name}}')">
 						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {{bucket.name}}</a>
 				</td>
+				<td><a href="/descriptors?adgroup={{bucket.name}}">{% if bucket.descriptors %}{{bucket.descriptors}}{% else %}0{% endif %}</a></td>
 				<td>{{bucket.total_sites}}</td>
 				<td>{{bucket.maxp}}</td>
 			</tr>

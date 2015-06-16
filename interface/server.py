@@ -192,6 +192,39 @@ def search_similarsites():
 
 ###### Page Functionality
 
+@app.route('/descriptors', methods=['POST', 'GET'])
+def adgroup_descriptors():
+	"""Analyzes a specific adgroup"""
+	
+	if request.method == 'POST': #save some data
+		
+		a = request.form['adgroup'] #grab from headers
+		d = request.form['descriptors']
+		
+		d = d.strip().split('\r\n') #clean data
+		d = sorted(list(set([x for x in d if len(x) > 0])))
+		
+		data = c['adgroups'].find_one({'name':a}, {'descriptors':1}) #save data
+		c['adgroups'].update({'name': a}, {'$set':{'descriptors':d}})
+		
+		data['total'] = len(d) #get data to display on the page
+		data['show_total'] = True
+		data['descriptors'] = d
+		data['adgroup_name'] = a
+		del data['_id']
+		
+	else:
+		adgroup = request.args.get('adgroup')
+		data = c['adgroups'].find_one({'name':adgroup}, {'descriptors':1})
+		data['adgroup_name'] = adgroup
+		del data['_id']
+		
+		if 'descriptors' not in data:
+			data['descriptors'] = []
+	
+	return render_template("descriptors.html", data=data)	
+
+
 @app.route('/analyze')
 def analyze_adgroup():
 	"""Analyzes a specific adgroup"""

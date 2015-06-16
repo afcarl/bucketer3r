@@ -65,8 +65,10 @@ def import_comscore_data():
 
 def import_alexa_data(c):
 	"""Processes all alexa data. Requires a connection, c"""
-
-	for filename in listdir('alexa_data'):
+	
+	files = sorted(listdir('alexa_data'))
+	for n, filename in enumerate(files):
+		print "importing {0}/{1} ({2})".format(n, len(files), filename)
 		d = convert_single_alexa_file(filename)
 		if d:
 			url = d['ALEXA']['@URL']
@@ -142,6 +144,9 @@ def create_alexa_rank():
 	"""Parses all the ranking files and assigns a rank to each entry per day. Also useful to have a 'latest' attribute"""
 	
 	c = MongoClient()
+	
+	#use data from popular domain e.g. google to find out which dates are already imported
+	existing_dates = set(c['domains'].find_one({'domain': 'google#com'}, {'alexa.rank':1})['alexa']['rank'].keys())
 	
 	rfloc = '/Users/mruttley/Documents/2015-04-22 AdGroups/Bucketerer/data_crunching/ranking_files/'
 	files = sorted(listdir(rfloc))

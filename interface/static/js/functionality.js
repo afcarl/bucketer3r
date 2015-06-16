@@ -195,7 +195,8 @@ function expandcat(row_id) {
 			["Analyze", "/analyze?adgroup=" + adgroup_name],
 			["Delete", delete_adgroup(adgroup_name)],
 			["Import", '/import?name=' + adgroup_name],
-			["Export", '/export?name=' + adgroup_name]
+			["Export", '/export?name=' + adgroup_name],
+			["Descriptors", "/descriptors?adgroup=" + adgroup_name]
 		]
 		
 		buttons.forEach(function(datum){
@@ -805,5 +806,4 @@ function flag_horrible_site(site, element) {
 	xmlhttp.send();
 	
 }
-
 
