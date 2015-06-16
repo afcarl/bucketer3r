@@ -24,7 +24,7 @@
 					<a href="javascript:expandcat('row_{{bucket.name}}')">
 						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {{bucket.name}}</a>
 				</td>
-				<td><a href="/descriptors?adgroup={{bucket.name}}">{% if bucket.descriptors %}{{bucket.descriptors}}{% else %}0{% endif %}</a></td>
+				<td><a href="/descriptors?adgroup={{bucket.name}}" title='{{bucket.descriptors}}'>{{bucket.descriptors_length}}</a></td>
 				<td>{{bucket.total_sites}}</td>
 				<td>{{bucket.maxp}}</td>
 			</tr>

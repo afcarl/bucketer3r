@@ -413,6 +413,14 @@ def view_adgroups():
 		except KeyError:
 			to_append['maxp'] = 999
 		
+		try:
+			to_append['descriptors'] = "\n".join(adgroup['descriptors'])
+			to_append['descriptors_length'] = len(adgroup['descriptors'])
+		except KeyError:
+			to_append['descriptors'] = ""
+			to_append['descriptors_length'] = 0
+		
+		
 		data['buckets'].append(to_append)
 	data['buckets'] = sorted(data['buckets'], key=lambda x: x['name'])
 	
