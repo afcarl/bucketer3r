@@ -1,6 +1,8 @@
 from json import dumps, loads
 from datetime import datetime
 from collections import defaultdict
+from functools import wraps
+from hashlib import sha512
 
 from flask import Flask, render_template, request, make_response, Response, jsonify
 from pymongo import MongoClient
@@ -16,6 +18,7 @@ c = MongoClient()['bucketerer']
 
 ###### AJAX Functionality
 @app.route('/get_adgroup')
+@requires_auth
 def get_adgroup():
 	#Ajax request to get a record from the adgroups database
 	name = request.args.get('name')
@@ -25,6 +28,7 @@ def get_adgroup():
 	return jsonify(data)
 
 @app.route('/flag_url')
+@requires_auth
 def flag_url():
 	"""Flags a url"""
 	
@@ -35,6 +39,7 @@ def flag_url():
 	
 
 @app.route('/export_all', methods=['GET', 'POST'])
+@requires_auth
 def export_all():
 	"""Creates a file download from received post information"""
 	
@@ -54,6 +59,7 @@ def export_all():
 	return response
 
 @app.route('/filter_domains')
+@requires_auth
 def filter_domains():
 	#Ajax request to filter useful domains
 	kw = request.args.get('text')
@@ -71,6 +77,7 @@ def filter_domains():
 	return Response(dumps(domains), mimetype='application/json')
 
 @app.route('/remove_adgroupsite')
+@requires_auth
 def remove_adgroupsite():
 	"""Removes a site from an adgroup"""
 	
@@ -92,6 +99,7 @@ def remove_adgroupsite():
 	return Response(dumps({'answer': "success"}), mimetype='application/json')
 
 @app.route('/add_adgroupsite')
+@requires_auth
 def add_adgroupsite():
 	"""Adds a site to an adgroup"""
 	
@@ -116,6 +124,7 @@ def add_adgroupsite():
 	return Response(dumps({'answer': "success"}), mimetype='application/json')
 
 @app.route('/delete_adgroup')
+@requires_auth
 def delete_adgroup():
 	"""Deletes an adgroup"""
 	
@@ -129,6 +138,7 @@ def delete_adgroup():
 	return Response(dumps({'answer': "success"}), mimetype='application/json')
 
 @app.route('/get_metrics')
+@requires_auth
 def get_metrics_for_page():
 	"""Retrives and recalculates metrics for a group"""
 	
@@ -140,6 +150,7 @@ def get_metrics_for_page():
 	return Response(dumps(metrics), mimetype='application/json')
 
 @app.route('/search_dmoz_description')
+@requires_auth
 def search_dmoz_description():
 	"""Searches by DMOZ description"""
 	
@@ -151,6 +162,7 @@ def search_dmoz_description():
 	return Response(dumps(results), mimetype='application/json')
 
 @app.route("/search_html_meta_description")
+@requires_auth
 def search_html_meta_description():
 	"""Searches for a site via HTML meta desc"""
 
@@ -163,6 +175,7 @@ def search_html_meta_description():
 	return Response(dumps(results), mimetype='application/json')
 
 @app.route("/search_similarsites")
+@requires_auth
 def search_similarsites():
 	"""Searches for a site in the similarsites.com data"""
 
@@ -187,9 +200,42 @@ def search_similarsites():
 	
 	return Response(dumps(results), mimetype='application/json')
 
+###### Authentication
+
+def check_auth(username, password):
+	"""This function is called to check if a username /
+	password combination is valid.
+	"""
+	
+	pw_hash = c['auth'].find_one({'username':username}, {'pw_hash':1})
+	if pw_hash:
+		pw_hash = pw_hash['pw_hash']
+		if sha512(password) == pw_hash: #TODO salt hashes
+			return True
+	
+	return False
+
+def authenticate():
+	"""Sends a 401 response that enables basic auth""" #http://flask.pocoo.org/snippets/8/
+	return Response(
+		'Could not verify your login credentials\n'
+		'Please login using a username and password provided to you at Content Services. Email mruttley@mozilla.com for more details. ',
+		401,
+		{'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
 ###### Page Functionality
 
 @app.route('/descriptors', methods=['POST', 'GET'])
+@requires_auth
 def adgroup_descriptors():
 	"""Analyzes a specific adgroup"""
 	
@@ -223,6 +269,7 @@ def adgroup_descriptors():
 
 
 @app.route('/analyze')
+@requires_auth
 def analyze_adgroup():
 	"""Analyzes a specific adgroup"""
 	
@@ -244,6 +291,7 @@ def analyze_adgroup():
 	return render_template("analyze.html", data=data)	
 
 @app.route('/import', methods=['POST', 'GET'])
+@requires_auth
 def import_data():
 	"""Imports data to an adgroup."""
 	
@@ -283,6 +331,7 @@ def import_data():
 	return render_template("import.html", data=data)
 
 @app.route('/export')
+@requires_auth
 def export_data():
 	"""Exports data to a file"""
 	data = {}
@@ -294,6 +343,7 @@ def export_data():
 	return render_template("export.html", data=data)
 
 @app.route('/explore')
+@requires_auth
 def explore_domains():
 	data = {}
 	data['page'] = "explore"
@@ -392,6 +442,7 @@ def explore_domains():
 	return render_template("explore.html", data=data)
 
 @app.route('/view_adgroups')
+@requires_auth
 def view_adgroups():
 	data = {}
 	data['page'] = "view"
@@ -424,6 +475,7 @@ def view_adgroups():
 	return render_template("view_adgroups.html", data=data)
 
 @app.route('/new_adgroup', methods=['POST', 'GET'])
+@requires_auth
 def new_adgroup():
 	data = {}
 	
@@ -487,6 +539,7 @@ def new_adgroup():
 	return render_template("new_adgroup.html", data=data)
 
 @app.route('/')
+@requires_auth
 def show_main_page():
 	data = {}
 	data['page'] = "main"
