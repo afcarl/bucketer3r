@@ -22,10 +22,10 @@ def check_auth(username, password):
 	password combination is valid.
 	"""
 	
-	pw_hash = c['auth'].find_one({'username':username}, {'pw_hash':1})
+	pw_hash = c['users'].find_one({'username':username}, {'pw_hash':1})
 	if pw_hash:
 		pw_hash = pw_hash['pw_hash']
-		if sha512(password) == pw_hash: #TODO salt hashes
+		if sha512(password).hexdigest() == pw_hash: #TODO salt hashes
 			return True
 	
 	return False
@@ -33,10 +33,20 @@ def check_auth(username, password):
 def authenticate():
 	"""Sends a 401 response that enables basic auth""" #http://flask.pocoo.org/snippets/8/
 	return Response(
-		'Could not verify your login credentials\n'
+		'Could not verify your login credentials.'
 		'Please login using a username and password provided to you at Content Services. Email mruttley@mozilla.com for more details. ',
 		401,
 		{'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def edit_user(c, username, password):
+	"""Copied by sysadmin to create new user"""
+	
+	pw_hash = c['users'].find_one({'username':username}, {'pw_hash':1})
+	if not pw_hash:
+		c['users'].insert({'username':username, 'pw_hash': sha512(password).hexdigest()})
+	else:
+		c['users'].update({'username':username}, {'$set':{'pw_hash': sha512(password).hexdigest()}})
+	
 
 def requires_auth(f):
     @wraps(f)
