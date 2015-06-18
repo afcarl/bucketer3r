@@ -1,4 +1,3 @@
-
 from json import dumps, loads
 from datetime import datetime
 from collections import defaultdict
@@ -39,21 +38,19 @@ def flag_url():
 def export_all():
 	"""Creates a file download from received post information"""
 	
-	data = {}
-	for x in c['adgroups'].find({}, {'sites':1, 'name':1}):
-		data[x['name']] = x['sites']
+	data = []
+	for x in c['adgroups'].find({}, {'sites':1, 'name':1, 'descriptors':1}):
+		del x['_id']
+		x['sites'] = sorted(list(set([y.strip().lower() for y in x['sites']]))) #TODO fix from the start
+		x['descriptors'] = sorted(list(set([y.strip() for y in x['descriptors']])))
+		x['name'] = x['name'].strip()
+		data.append(x)
 	
-	data = sorted(data.items())
+	data = sorted(data, key=lambda x: x['name'])
+	data = dumps(data, indent=4)
 	
-	content = ""
-	for entry in data:
-		for site in entry[1]:
-			content += "{0},{1}\n".format(entry[0], site)
-	
-	print content[:100]
-	
-	response = make_response(content)
-	response.headers["Content-Disposition"] = "attachment; filename=adgroups.csv"
+	response = make_response(data)
+	response.headers["Content-Disposition"] = "attachment; filename=adgroups.json"
 	return response
 
 @app.route('/filter_domains')
