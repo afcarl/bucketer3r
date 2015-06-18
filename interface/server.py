@@ -15,6 +15,37 @@ from auxiliary import add_alexa_rank, get_metrics, recalculate_metrics
 app = Flask(__name__)
 c = MongoClient()['bucketerer']
 
+###### Authentication
+
+def check_auth(username, password):
+	"""This function is called to check if a username /
+	password combination is valid.
+	"""
+	
+	pw_hash = c['auth'].find_one({'username':username}, {'pw_hash':1})
+	if pw_hash:
+		pw_hash = pw_hash['pw_hash']
+		if sha512(password) == pw_hash: #TODO salt hashes
+			return True
+	
+	return False
+
+def authenticate():
+	"""Sends a 401 response that enables basic auth""" #http://flask.pocoo.org/snippets/8/
+	return Response(
+		'Could not verify your login credentials\n'
+		'Please login using a username and password provided to you at Content Services. Email mruttley@mozilla.com for more details. ',
+		401,
+		{'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 
 ###### AJAX Functionality
 @app.route('/get_adgroup')
@@ -199,38 +230,6 @@ def search_similarsites():
 	results = results[:50]
 	
 	return Response(dumps(results), mimetype='application/json')
-
-###### Authentication
-
-def check_auth(username, password):
-	"""This function is called to check if a username /
-	password combination is valid.
-	"""
-	
-	pw_hash = c['auth'].find_one({'username':username}, {'pw_hash':1})
-	if pw_hash:
-		pw_hash = pw_hash['pw_hash']
-		if sha512(password) == pw_hash: #TODO salt hashes
-			return True
-	
-	return False
-
-def authenticate():
-	"""Sends a 401 response that enables basic auth""" #http://flask.pocoo.org/snippets/8/
-	return Response(
-		'Could not verify your login credentials\n'
-		'Please login using a username and password provided to you at Content Services. Email mruttley@mozilla.com for more details. ',
-		401,
-		{'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
 
 ###### Page Functionality
 
@@ -547,8 +546,7 @@ def show_main_page():
 
 if __name__ == '__main__':
 	app.debug = True
-	#app.run(port=5010)
-	app.run(host="0.0.0.0",port=5010)
+	app.run(host="0.0.0.0", port=80)
 
 
 
