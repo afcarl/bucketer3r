@@ -7,28 +7,32 @@
 </div>
 <div class='row' style='margin-top:20px;'>
 	<div class='col-md-12'>
-		<table class='table table-hover buckettable'>
-			<tr>
-				<th style='width:10px;'>&nbsp;</th>
-				<th>Bucket Name</th>
-				<th>Descriptors</th>
-				<th>Total Sites</th>
-				<th>MaxP <a href='javascript:alert("Explanation goes here")'>(?)</a></th>
-			</tr>
-			{% for bucket in data.buckets %}
-			<tr id='row_{{bucket.name}}'>
-				<td>
-					<input type="checkbox" id='{{bucket.name}}' onclick='list_checkbox_controls()'>
-				</td>
-				<td>
-					<a href="javascript:expandcat('row_{{bucket.name}}')">
-						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {{bucket.name}}</a>
-				</td>
-				<td><a href="/descriptors?adgroup={{bucket.name}}" title='{{bucket.descriptors}}'>{{bucket.descriptors_length}}</a></td>
-				<td>{{bucket.total_sites}}</td>
-				<td>{{bucket.maxp}}</td>
-			</tr>
-			{% endfor %}
+		<table class='table table-hover buckettable sortable'>
+			<thead>
+				<tr>
+					<th style='width:10px;'>&nbsp;</th>
+					<th>Bucket Name</th>
+					<th>Descriptors</th>
+					<th>Total Sites</th>
+					<th>MaxP <a href='javascript:alert("Explanation goes here")'>(?)</a></th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for bucket in data.buckets %}
+				<tr id='row_{{bucket.name}}'>
+					<td>
+						<input type="checkbox" id='{{bucket.name}}' onclick='list_checkbox_controls()'>
+					</td>
+					<td>
+						<a href="javascript:expandcat('row_{{bucket.name}}')">
+							<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {{bucket.name}}</a>
+					</td>
+					<td><a href="/descriptors?adgroup={{bucket.name}}" title='{{bucket.descriptors}}'>{{bucket.descriptors_length}}</a></td>
+					<td>{{bucket.total_sites}}</td>
+					<td>{{bucket.maxp}}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
 		</table>
 	</div>
 </div>
