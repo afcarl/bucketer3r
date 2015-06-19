@@ -295,7 +295,7 @@ def analyze_adgroup():
 	for site in data['sites']:
 		try:
 			alexa_rank = c['domains'].find_one({'domain': site.replace('.','#')}, {'alexa.rank.latest':1})['alexa']['rank']['latest']
-			estimated_traffic = c['comscore_estimations'].find_one({'rank':alexa_rank}, {'unique_visitors':1})
+			estimated_traffic = c['comscore_estimations'].find_one({'rank':alexa_rank}, {'unique_visitors':1})['unique_visitors']
 		except Exception:
 			alexa_rank = "?"
 			estimated_traffic = "?"
