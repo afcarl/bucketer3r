@@ -336,6 +336,7 @@ function add_site(domain, node_to_remove=false){
 				recalculate_metrics() //recalculate metrics in the box 
 			}else{
 				console.log("Error adding " + domain)
+				alert(resp['answer'])
 			}
 		}
 	}

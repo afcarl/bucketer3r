@@ -11,7 +11,7 @@ from pymongo import MongoClient
 import domain_search #module with further filtering capacities etc
 from dmoz import get_cats
 from similarity import find_by_html, find_by_dmoz_description, find_by_similarsites
-from auxiliary import add_alexa_rank, get_metrics, recalculate_metrics
+from auxiliary import add_alexa_rank, get_metrics, recalculate_metrics, isDomain
 
 app = Flask(__name__)
 #sslify = SSLify(app)
@@ -150,8 +150,10 @@ def add_adgroupsite():
 	
 	adgroup_name = request.args.get('adgroup_name')
 	domain = request.args.get('domain')
-	
 	entry = c['adgroups'].find_one({'name': adgroup_name}, {'sites':1})
+	
+	if not isDomain(domain):
+		return Response(dumps({'answer': "Invalid Domain Name: '{0}'".format(domain)}), mimetype='application/json')
 	
 	if domain in entry['sites']:
 		return Response(dumps({'answer': "already there"}), mimetype='application/json')
@@ -321,18 +323,19 @@ def import_data():
 	
 	if request.method == 'POST':
 		#de-serialize
-		print request.form['domain_data']
 		domain_data = loads(request.form['domain_data'])
+		adgroup = domain_data['adgroup']
+		sites = domain_data['sites']
 		
 		#save to the group
+		entry = c['adgroups'].find_one({'name': adgroup}, {'sites':1})
 		total = 0
 		for domain in domain_data['sites']:
-			entry = c['adgroups'].find_one({'name': domain_data['adgroup']}, {'sites':1})
-			
-			if domain:
-				if domain not in entry['sites']:
-					total += 1
-					entry['sites'].append(domain)
+			if isDomain(domain):
+				if domain:
+					if domain not in entry['sites']:
+						total += 1
+						entry['sites'].append(domain)
 			
 			c['adgroups'].update({'_id':entry['_id']}, {"$set": {"sites": entry['sites']}})
 		
@@ -427,7 +430,12 @@ def explore_domains():
 		except KeyError:
 			data['alexa_rank'] = '?'
 		
-		data['estimated_daily_traffic'] = 999
+		try:
+			traffic = c['comscore_estimations'].find_one({'rank': data['alexa_rank']}, {'unique_visitors':1})['unique_visitors']
+			traffic = int(traffic/91.25)
+			data['estimated_daily_unique_visitors'] = traffic
+		except Exception:
+			data['estimated_daily_unique_visitors'] = "?"
 		
 		#Recent Alexa performance
 		try:

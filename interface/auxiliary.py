@@ -1,6 +1,16 @@
 #Auxiliary functionality that doesn't fit into any particular module
 
 from collections import defaultdict
+from re import match
+
+def isDomain(domain):
+	"""Validates a domain"""
+	
+	if match("^[a-z0-9.]{3,}$", domain):
+		return True
+	
+	return False
+	
 
 def add_alexa_rank(c, results):
 	"""Adds the alexa rank to a list of dictionaries containing domains."""
@@ -30,7 +40,6 @@ def get_data_for_sitelist(c, sitelist):
 			siteinfo[site].append(entry['unique_visitors'])
 	
 	return siteinfo
-	
 
 def calculate_maxp(siteinfo):
 	
