@@ -306,8 +306,6 @@ function add_site(domain, node_to_remove=false){
 		node_to_remove.parentNode.removeChild(node_to_remove)
 	}
 	
-	recalculate_metrics() //recalculate metrics in the box 
-	
 	adgroup_name = location.href.split("name=")[1].split("&")[0]
 	
 	//send ajax request to add the site
@@ -335,6 +333,7 @@ function add_site(domain, node_to_remove=false){
 				document.getElementById('ddbox_container').appendChild(button)
 				
 				console.log("Added " + domain)
+				recalculate_metrics() //recalculate metrics in the box 
 			}else{
 				console.log("Error adding " + domain)
 			}
@@ -411,8 +410,6 @@ function remove_site(domain){
 	box = document.getElementById(box_id)
 	box.parentNode.removeChild(box)
 	
-	recalculate_metrics() //recalculate metrics in the box 
-	
 	adgroup_name = location.href.split("name=")[1].split("&")[0]
 	
 	//send ajax request to remove the site
@@ -423,6 +420,7 @@ function remove_site(domain){
 			resp = JSON.parse(xmlhttp.responseText)
 			if (resp['answer'] == 'success') {
 				console.log("Removed " + domain)
+				recalculate_metrics() //recalculate metrics in the box 
 			}else{
 				console.log("Error in removing " + domain)
 			}

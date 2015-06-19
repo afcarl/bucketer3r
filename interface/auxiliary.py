@@ -53,7 +53,7 @@ def calculate_daily_traffic(siteinfo):
 		if len(info) == 2:
 			total += info[1]
 	
-	traffic = float(total) / 91.25
+	traffic = int(float(total) / 91.25)
 	
 	return traffic
 
@@ -74,7 +74,10 @@ def get_metrics(c, adgroup_name):
 	metrics = {}
 	
 	for k,v in entry['metrics'].iteritems():
-		metrics['metric_' + k] = v #add prefix
+		if type(v) == float:
+			metrics['metric_' + k] = round(v, 3) #add prefix
+		else:
+			metrics['metric_' + k] = v #add prefix
 	
 	#add total domains
 	metrics['metric_total_domains'] = len(entry['sites'])

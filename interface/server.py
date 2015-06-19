@@ -481,7 +481,7 @@ def view_adgroups():
 		try:
 			to_append['maxp'] = adgroup['metrics']['maxp']
 		except KeyError:
-			to_append['maxp'] = 999
+			to_append['maxp'] = "?"
 		
 		try:
 			to_append['descriptors'] = "\n".join(adgroup['descriptors'])
