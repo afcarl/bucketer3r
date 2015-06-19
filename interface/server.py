@@ -5,6 +5,7 @@ from functools import wraps
 from hashlib import sha512
 
 from flask import Flask, render_template, request, make_response, Response, jsonify
+from flask_sslify import SSLify
 from pymongo import MongoClient
 
 import domain_search #module with further filtering capacities etc
@@ -13,6 +14,7 @@ from similarity import find_by_html, find_by_dmoz_description, find_by_similarsi
 from auxiliary import add_alexa_rank, get_metrics, recalculate_metrics
 
 app = Flask(__name__)
+sslify = SSLify(app)
 c = MongoClient()['bucketerer']
 
 ###### Authentication
@@ -557,7 +559,7 @@ def show_main_page():
 	return render_template("index.html", data=data)
 
 if __name__ == '__main__':
-	app.debug = True
+	app.debug = False
 	app.run(host="0.0.0.0", port=443, ssl_context=('/home/ec2-user/.openssl/server.crt', '/home/ec2-user/.openssl/server.key'))
 
 
