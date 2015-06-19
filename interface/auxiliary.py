@@ -12,7 +12,7 @@ def add_alexa_rank(c, results):
 	
 	return results
 
-def get_data_for_sitelist(sitelist):
+def get_data_for_sitelist(c, sitelist):
 	"""A dict of rank and expected uniques for a sitelist"""
 	
 	siteinfo = defaultdict(list)
@@ -86,7 +86,7 @@ def recalculate_metrics(c, adgroup_name):
 
 	#setup
 	entry = c['adgroups'].find_one({'name':adgroup_name})
-	siteinfo = get_data_for_sitelist(entry['sites'])
+	siteinfo = get_data_for_sitelist(c, entry['sites'])
 	
 	#calculate metrics
 	metrics = {
