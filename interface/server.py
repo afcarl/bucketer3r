@@ -558,7 +558,7 @@ def show_main_page():
 
 if __name__ == '__main__':
 	app.debug = True
-	app.run(host="0.0.0.0", port=80, ssl_context=('/home/ec2-user/.openssl/server.crt', '/home/ec2-user/.openssl/server.key'))
+	app.run(host="0.0.0.0", port=443, ssl_context=('/home/ec2-user/.openssl/server.crt', '/home/ec2-user/.openssl/server.key'))
 
 
 
