@@ -41,6 +41,8 @@ def authenticate():
 def edit_user(c, username, password):
 	"""Copied by sysadmin to create new user"""
 	
+	#python -c "from pymongo import MongoClient;c=MongoClient()['bucketerer'];from server import edit_user;edit_user(c,'u@mozilla.com','pw')"
+	
 	pw_hash = c['users'].find_one({'username':username}, {'pw_hash':1})
 	if not pw_hash:
 		c['users'].insert({'username':username, 'pw_hash': sha512(password).hexdigest()})
@@ -556,7 +558,7 @@ def show_main_page():
 
 if __name__ == '__main__':
 	app.debug = True
-	app.run(host="0.0.0.0", port=80)
+	app.run(host="0.0.0.0", port=80, ssl_context=('/home/ec2-user/.openssl/server.crt', '/home/ec2-user/.openssl/server.key'))
 
 
 
