@@ -25,6 +25,7 @@ stopwords = stopwords()
 directory = '/Users/mruttley/Documents/2015-04-22 AdGroups/Bucketerer/data_crunching/alexa_data/'
 html_directory = "/Users/mruttley/Documents/2015-05-11 StatCounter HTML Crawler/html/"
 ranking_directory = "/Users/mruttley/Documents/2015-04-22 AdGroups/Bucketerer/data_crunching/ranking_files/"
+verbose = False
 
 #Auxiliary functionality
 
@@ -102,15 +103,16 @@ def load_matrix():
 	
 	return index
 
-def opt_cosine_similarity(vec1, vec2):
+def opt_cosine_similarity(vec1, vec2, min_intersection=3):
 	"""Returns the cosine similarity of two vectors, with some optimization for descriptions,
 	e.g. vectors must have at least 2 words in common
 	Vectors should be Counters"""
 
 	intersection = set(vec1.keys()) & set(vec2.keys())
 	
-	if len(intersection) < 3 :
-		return False
+	if min_intersection:
+		if len(intersection) < min_intersection:
+			return False
 	
 	numerator = sum([vec1[x] * vec2[x] for x in intersection])
 	sum1 = sum([vec1[x]**2 for x in vec1.keys()])
@@ -303,7 +305,7 @@ def find_by_dmoz_description(starter_site, index):
 	return results
 
 def find_by_similarsites(c, starter_site=False, adgroup=False):
-	"""Searches similarsites crawled data"""
+	"""Searches similarsites crawled data. Returns a list [{url, score}]"""
 	
 	existing = set()
 	if adgroup:
@@ -338,19 +340,24 @@ def find_by_similarsites(c, starter_site=False, adgroup=False):
 		return sites
 
 def find_by_html(connection, starter_site=False, starter_text=False, check_cache=True, adgroup=False):
-	"""Searches and ranks by the page's meta description in the HTML
+	"""
+	 - Searches and ranks by the page's meta description in the HTML
 	connection	  :  a mongodb connection
 	starter_site  :  some domain name
 	starter_text  :  some text instead of a domain name (typically some compiled domains)
 	verbose		  :  whether you want the results printed to the terminal
 	check_cache	  :  set to false if you want to always pull new data
+	 - returns a list of dictionaries [{url, score, desc}]
+	 - can be tested with: import similarity;c=similarity.create_connection();similarity.find_by_html(c,starter_text='recipes')
 	"""
 	
 	#first grab a set of sites that we shouldn't match (since they already exist)
 	existing = set()
 	if adgroup:
+		if verbose: print "Getting sites that we shouldn't match in the adgroup"
 		try:
 			existing = set(connection['adgroups'].find_one({'name':adgroup}, {'sites':1})['sites'])
+			if verbose: print "done"
 		except (TypeError, KeyError):
 			pass
 	
@@ -358,15 +365,18 @@ def find_by_html(connection, starter_site=False, starter_text=False, check_cache
 	if starter_site:
 		domain = starter_site.replace('.', '#')
 		#get the meta description
-		entry = connection['domains'].find_one({'html.meta_description': {'$exists':True}, 'domain': domain }, {'html.meta_description': 1, 'similar.meta_description': 1, 'domain': 1})
+		entry = connection['domains'].find_one({'html.meta_description': {'$exists':True}, 'domain': domain },{'html.meta_description': 1, 'similar.meta_description': 1, 'domain': 1})
 	
 		#check if there's anything in the cache
 		results = []
 		if check_cache:
+			if verbose: print "checking cache"
 			try:
 				if entry:
+					if verbose: print "entry was true"
 					results = entry['similar']['meta_description']
 					if results:
+						if verbose: print "getting descs"
 						for x in range(len(results)):
 							desc = connection['domains'].find_one({"domain":results[x]['domain'].replace('.',"#")}, {"html.meta_description":1})
 							desc = desc['html']['meta_description']
@@ -378,16 +388,20 @@ def find_by_html(connection, starter_site=False, starter_text=False, check_cache
 		#nothing was found in the cache
 		#get starter site's description to compare things to
 		try:
+			if verbose: print "setting starter descs"
 			starter_desc = entry['html']['meta_description']
 		except (KeyError, TypeError):
 			return []
 	else:
+		
 		if starter_text:
 			#use the starter text instead
 			starter_desc = starter_text
+			if verbose: print "Starter desc being set to: {0}".format(starter_desc)
 		else:
 			#starter desc must be that of all the adgroup items combined
 			starter_desc = ""
+			if verbose: print "getting meta desc for all sites in adgroup"
 			for site in existing:
 				entry = connection['domains'].find_one({'domain':site.replace('.', "#")}, {'html.meta_description':1})
 				if entry:
@@ -397,32 +411,50 @@ def find_by_html(connection, starter_site=False, starter_text=False, check_cache
 					except KeyError:
 						pass
 	
+	if verbose: print "After main decisioning, starter desc is: {0}".format(starter_desc)
+	
 	#set up a ranking placeholder for the top 50 results
+	if verbose: print "creating placeholder"
 	results = [{"url": "", "score": 0, "desc": ""} for x in range(50)]
 	
 	#clean/tokenize/vectorize the text
+	if verbose: print "vectorizing"
 	starter_desc = tokenize_clean(starter_desc) #clean it and tokenize it
+	if verbose: print "Starter desc: {0}".format(starter_desc)
 	starter_vector = Counter(starter_desc) #vectorize it
-	
-	print starter_vector
+	if verbose: print "Starter vector: {0}".format(starter_vector)
 	
 	#scan all other domains
+	if verbose: print "iterating through all domains"
+	
+	added = 0
 	for n, record in enumerate(connection['domains'].find({'html.meta_description':{'$exists':True}}, {'html.meta_description':1, 'domain':1})):
+	
 		domain = record['domain'].replace("#", ".")
 		
 		if domain != starter_site:
 			if domain not in existing:
 				desc = record['html']['meta_description']
 				kw_vector = Counter(tokenize_clean(desc)) #vectorize desc
-				cosim = opt_cosine_similarity(starter_vector, kw_vector)
+				cosim = opt_cosine_similarity(starter_vector, kw_vector, min_intersection=False)
 				
 				if cosim:
 					if cosim > results[-1]["score"]:
+						
 						for x in range(len(results)):
 							if cosim > results[x]["score"]:
 								results = results[:x] + [{"domain":domain, "score":cosim, "desc": desc}] + results[x:]
+								added += 1
 								results = results[:50]
 								break
+		if verbose:
+			if n % 50000 == 0:
+				print n, added
+	
+	if verbose: print "results is of len {0}".format(len(results))
+	if verbose:
+		for x in results:
+			print x
 	
 	for x in range(len(results)):
 		if results[x]["score"] == 0:
@@ -430,6 +462,7 @@ def find_by_html(connection, starter_site=False, starter_text=False, check_cache
 			break
 	
 	if starter_site:
+		if verbose: print "saving to cache"
 		#save to cache
 		connection['domains'].update({'_id': entry['_id']},
 			{
@@ -438,6 +471,7 @@ def find_by_html(connection, starter_site=False, starter_text=False, check_cache
 				}
 			})
 	
+	if verbose: print "results being return are of len {0}".format(len(results))
 	return results
 
 def suggest_by_existing_content(c, sitelist):
