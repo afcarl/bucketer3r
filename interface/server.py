@@ -492,6 +492,11 @@ def view_adgroups():
 			to_append['maxp'] = "?"
 		
 		try:
+			to_append['expected_daily_traffic'] = int(adgroup['metrics']['expected_daily_traffic'])
+		except KeyError:
+			to_append['expected_daily_traffic'] = "?"
+		
+		try:
 			to_append['descriptors'] = "\n".join(adgroup['descriptors'])
 			to_append['descriptors_length'] = len(adgroup['descriptors'])
 		except KeyError:
@@ -528,6 +533,7 @@ def new_adgroup():
 						'created_on': datetime.now(),
 						'sites': [],
 						'created_by': 'Bucketerer User',
+						'descriptors': [],
 						'metrics': {}
 					}
 				c['adgroups'].insert(data)
